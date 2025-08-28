@@ -1,0 +1,4 @@
+{
+  "/(workspace)/page": "app/(workspace)/page.js",
+  "/(workspace)/chat/[chatId]/page": "app/(workspace)/chat/[chatId]/page.js"
+}
