@@ -1,14 +1,8 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/login/page": "app/login/page.js",
   "/onboarding/school/page": "app/onboarding/school/page.js",
   "/signup/page": "app/signup/page.js",
-  "/new/page": "app/new/page.js",
-  "/login/page": "app/login/page.js",
-  "/(workspace)/page": "app/(workspace)/page.js",
-  "/(workspace)/school/[schoolId]/page": "app/(workspace)/school/[schoolId]/page.js",
-  "/(workspace)/settings/notifications/page": "app/(workspace)/settings/notifications/page.js",
-  "/(workspace)/settings/profile/page": "app/(workspace)/settings/profile/page.js",
-  "/(workspace)/settings/account/page": "app/(workspace)/settings/account/page.js",
   "/(workspace)/chat/[chatId]/page": "app/(workspace)/chat/[chatId]/page.js",
-  "/(workspace)/settings/devices&messaging/page": "app/(workspace)/settings/devices&messaging/page.js"
+  "/(workspace)/page": "app/(workspace)/page.js"
 }
