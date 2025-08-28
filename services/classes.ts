@@ -1,5 +1,5 @@
 // services/classes.ts
-import { core } from './api'
+import { api } from './api'
 
 type CreateClassRequest = {
   name: string
@@ -13,12 +13,12 @@ type Class = {
 
 export const classService = {
   async list() {
-    const { data } = await core.get('/api/classes')
+    const { data } = await api.get('/api/classes')
     return data as Class[]
   },
   
   async create(body: CreateClassRequest) {
-    const { data } = await core.post('/api/classes', body)
+    const { data } = await api.post('/api/classes', body)
     return data as Class
   }
 }

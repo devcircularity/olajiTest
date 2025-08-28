@@ -1,10 +1,10 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { createSchool } from "@/services/schools";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function OnboardingSchoolPage() {
+function OnboardingSchoolForm() {
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/";
@@ -165,5 +165,13 @@ export default function OnboardingSchoolPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingSchoolPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OnboardingSchoolForm />
+    </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 // services/academic.ts
-import { core } from './api'
+import { api } from './api'
 
 type SetAcademicYearRequest = {
   academic_year_start: string  // YYYY-MM-DD format
@@ -12,7 +12,7 @@ type AcademicYearResponse = {
 
 export const academicService = {
   async setAcademicYear(body: SetAcademicYearRequest) {
-    const { data } = await core.post('/api/schools/active/academic-year', body)
+    const { data } = await api.post('/api/schools/active/academic-year', body)
     return data as AcademicYearResponse
   }
 }

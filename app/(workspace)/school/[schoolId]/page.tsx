@@ -47,9 +47,9 @@ export default function SchoolOverviewPage() {
 
         setSchoolInfo(schoolData)
         setOverview(overviewData)
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load school data:', err)
-        if (err.response?.status === 401) {
+        if (err?.response?.status === 401) {
           setError('Authentication failed. Please log in again.')
         } else {
           setError('Failed to load school information')

@@ -1,6 +1,11 @@
 // components/chat/tools/blocks/ButtonBlock.tsx
 import React, { useState } from 'react';
-import { ButtonBlock as ButtonBlockType, ButtonGroupBlock, ConfirmationBlock, ActionPanelBlock } from '../types';
+import { 
+  ButtonBlock as ButtonBlockType, 
+  ButtonGroupBlock as ButtonGroupBlockType, 
+  ConfirmationBlock as ConfirmationBlockType, 
+  ActionPanelBlock as ActionPanelBlockType 
+} from '../types';
 
 interface ButtonProps {
   button: ButtonBlockType['button'];
@@ -78,7 +83,7 @@ export const ButtonBlock: React.FC<{
 };
 
 export const ButtonGroupBlock: React.FC<{ 
-  block: ButtonGroupBlock; 
+  block: ButtonGroupBlockType; 
   onAction: (action: any) => void;
 }> = ({ block, onAction }) => {
   const containerClass = block.layout === 'vertical' 
@@ -101,7 +106,7 @@ export const ButtonGroupBlock: React.FC<{
 };
 
 export const ConfirmationBlock: React.FC<{ 
-  block: ConfirmationBlock; 
+  block: ConfirmationBlockType; 
   onAction: (action: any) => void;
 }> = ({ block, onAction }) => {
   const [showDialog, setShowDialog] = useState(false);
@@ -151,14 +156,14 @@ export const ConfirmationBlock: React.FC<{
                 onClick={handleCancel}
                 disabled={isLoading}
               >
-                {block.button.dialog.cancelLabel}
+                {block.button.dialog.cancelLabel || 'Cancel'}
               </button>
               <button
                 className={`btn btn-${block.button.dialog.confirmVariant || 'primary'} ${isLoading ? 'loading' : ''}`}
                 onClick={handleConfirm}
                 disabled={isLoading}
               >
-                {isLoading ? 'Processing...' : block.button.dialog.confirmLabel}
+                {isLoading ? 'Processing...' : (block.button.dialog.confirmLabel || 'Confirm')}
               </button>
             </div>
           </div>
@@ -169,7 +174,7 @@ export const ConfirmationBlock: React.FC<{
 };
 
 export const ActionPanelBlock: React.FC<{ 
-  block: ActionPanelBlock; 
+  block: ActionPanelBlockType; 
   onAction: (action: any) => void;
 }> = ({ block, onAction }) => {
   const getColumnClass = (columns: number) => {

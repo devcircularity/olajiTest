@@ -58,6 +58,25 @@ export function TableBlock({ block, onAction }: Props) {
     return value
   }
 
+  const renderFilterOption = (option: string | Record<string, any>, index: number) => {
+    if (typeof option === 'string') {
+      return (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      )
+    } else {
+      // Handle object options - assuming they have 'value' and 'label' properties
+      const value = option.value || option.id || ''
+      const label = option.label || option.name || value
+      return (
+        <option key={`${value}-${index}`} value={value}>
+          {label}
+        </option>
+      )
+    }
+  }
+
   const hasSelectionActions = block.config.actions?.some(action => action.selectionRequired)
 
   return (
@@ -97,9 +116,9 @@ export function TableBlock({ block, onAction }: Props) {
                 {filter.type === 'select' ? (
                   <select className="input min-w-32">
                     <option value="">All</option>
-                    {filter.options?.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
+                    {filter.options?.map((option, optionIndex) => 
+                      renderFilterOption(option, optionIndex)
+                    )}
                   </select>
                 ) : filter.type === 'daterange' ? (
                   <input type="date" className="input" />
@@ -192,8 +211,8 @@ export function TableBlock({ block, onAction }: Props) {
           <div className="flex items-center justify-between">
             <div className="text-sm text-neutral-700 dark:text-neutral-300">
               Showing {((currentPage - 1) * block.config.pagination.pageSize) + 1} to{' '}
-              {Math.min(currentPage * block.config.pagination.pageSize, block.config.pagination.total)} of{' '}
-              {block.config.pagination.total} results
+              {Math.min(currentPage * block.config.pagination.pageSize, block.config.pagination.total || 0)} of{' '}
+              {block.config.pagination.total || 0} results
             </div>
             
             <div className="flex items-center gap-2">
@@ -206,12 +225,12 @@ export function TableBlock({ block, onAction }: Props) {
               </button>
               
               <span className="px-3 py-1 text-sm">
-                Page {currentPage} of {Math.ceil(block.config.pagination.total / block.config.pagination.pageSize)}
+                Page {currentPage} of {Math.ceil((block.config.pagination.total || 0) / block.config.pagination.pageSize)}
               </span>
               
               <button 
                 onClick={() => setCurrentPage(prev => prev + 1)}
-                disabled={currentPage >= Math.ceil(block.config.pagination.total / block.config.pagination.pageSize)}
+                disabled={currentPage >= Math.ceil((block.config.pagination.total || 0) / block.config.pagination.pageSize)}
                 className="px-3 py-1 text-sm border rounded disabled:opacity-50"
               >
                 Next

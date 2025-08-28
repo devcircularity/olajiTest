@@ -12,5 +12,5 @@ export * from './academic'
 // Chat API services
 export * from './chats'
 
-// Base API clients
-export { core, chat } from './api'
+// Base API client
+export { api } from './api'

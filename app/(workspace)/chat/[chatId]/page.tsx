@@ -32,34 +32,39 @@ export default function ChatDetail() {
     switch (action.type) {
       case 'query':
         // Re-query the chat with the action payload
-        if ('payload' in action && action.payload && 'message' in action.payload) {
+        if (action.payload && 'message' in action.payload) {
           await onSend(action.payload.message)
         }
         break
       
       case 'route':
         // Navigate to a different page
-        if ('target' in action) {
+        if (action.target) {
           // Parse route target and navigate
           const [section, view] = action.target.split(':')
           router.push(`/${section}${view ? `/${view}` : ''}`)
         }
         break
       
-      case 'export':
+      case 'download':
         // Trigger file download
-        if ('endpoint' in action) {
+        if (action.endpoint) {
           window.open(action.endpoint, '_blank')
         }
         break
       
       case 'mutation':
         // Handle API mutations (for form submissions, etc.)
-        if ('endpoint' in action) {
+        if (action.endpoint) {
           // In a real app, you'd make the API call here
           console.log('Mutation action:', action)
           // You could also show a toast notification, etc.
         }
+        break
+      
+      case 'confirm':
+        // Handle confirmation dialogs - this would typically show a modal
+        console.log('Confirm action:', action)
         break
       
       default:
@@ -276,7 +281,7 @@ export default function ChatDetail() {
             >
               New Chat
             </button>
-          </div>
+            </div>
         </div>
       </div>
     )

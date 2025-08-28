@@ -1,10 +1,9 @@
 // services/api.ts
 import axios from 'axios'
-import { env } from '@/env.mjs'
 
 // Single API instance for all backend calls
 export const api = axios.create({
-  baseURL: env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000',
   timeout: 20000,
 })
 

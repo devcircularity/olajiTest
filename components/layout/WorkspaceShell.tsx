@@ -11,7 +11,12 @@ type Listener = (cmd: CanvasCommand) => void
 const listeners = new Set<Listener>()
 export const CanvasBus = {
   send(cmd: CanvasCommand) { listeners.forEach(l => l(cmd)) },
-  on(l: Listener) { listeners.add(l); return () => listeners.delete(l) }
+  on(l: Listener) { 
+    listeners.add(l); 
+    return () => { 
+      listeners.delete(l) 
+    } 
+  }
 }
 
 export default function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -41,12 +46,15 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
     const w = localStorage.getItem('canvas_width')
     if (open) setCanvasOpen(open === '1')
     if (w) setCanvasWidth(Math.max(320, Math.min(800, parseInt(w, 10) || 420)))
-    return CanvasBus.on((cmd) => {
+    
+    const unsubscribe = CanvasBus.on((cmd) => {
       if (cmd.type === 'open') setCanvasOpen(true)
       if (cmd.type === 'close') setCanvasOpen(false)
       if (cmd.type === 'toggle') setCanvasOpen(o => !o)
       if (cmd.width) setCanvasWidth(Math.max(320, Math.min(800, cmd.width)))
     })
+    
+    return unsubscribe
   }, [])
   useEffect(() => { localStorage.setItem('canvas_open', canvasOpen ? '1' : '0') }, [canvasOpen])
   useEffect(() => { localStorage.setItem('canvas_width', String(canvasWidth)) }, [canvasWidth])

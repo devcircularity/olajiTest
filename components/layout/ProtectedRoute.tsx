@@ -1,15 +1,17 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { ready, isAuthenticated, hasSchool } = useAuth();
+  const { isLoading, isAuthenticated, active_school_id } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
+  const hasSchool = !!active_school_id;
+
   useEffect(() => {
-    if (!ready) return; // ✅ wait for hydration
+    if (isLoading) return; // wait for hydration
     if (!isAuthenticated) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
@@ -17,9 +19,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     if (isAuthenticated && !hasSchool && !pathname.startsWith("/onboarding")) {
       router.replace(`/onboarding/school?next=${encodeURIComponent(pathname)}`);
     }
-  }, [ready, isAuthenticated, hasSchool, router, pathname]);
+  }, [isLoading, isAuthenticated, hasSchool, router, pathname]);
 
-  if (!ready) return null;                  // avoid flicker / wrong redirect
+  if (isLoading) return null;                  // avoid flicker / wrong redirect
   if (!isAuthenticated) return null;
   if (isAuthenticated && !hasSchool && !pathname.startsWith("/onboarding")) return null;
 

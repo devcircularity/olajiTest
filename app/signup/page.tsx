@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth";
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -10,7 +10,7 @@ import TextField from "@/components/ui/TextField";
 import PasswordField from "@/components/ui/PasswordField";
 import Button from "@/components/ui/Button";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/";
@@ -64,6 +64,8 @@ export default function SignupPage() {
     }
   }
 
+  const passwordsMatch = !password || !confirm || password === confirm;
+
   return (
     <AuthLayout title="Create your account" subtitle="Start organizing your school">
       <form onSubmit={onCreate} className="space-y-4" noValidate>
@@ -106,7 +108,7 @@ export default function SignupPage() {
           required
           error={password && confirm && password !== confirm ? "Passwords do not match" : null}
         />
-        <Button className="w-full" disabled={loading || (password && confirm && password !== confirm)}>
+        <Button className="w-full" disabled={loading || !passwordsMatch}>
           {loading ? "Creating…" : "Create account"}
         </Button>
       </form>
@@ -120,5 +122,13 @@ export default function SignupPage() {
 
       {err && <p className="error-text mt-3" role="alert" aria-live="polite">{err}</p>}
     </AuthLayout>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupForm />
+    </Suspense>
   );
 }

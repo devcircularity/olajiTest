@@ -101,5 +101,5 @@ export function HeroLogo({ className }: { className?: string }) {
 }
 
 export function LogoIcon({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) {
-  return <Logo size={size} showText={false} href={null} className={className} />;
+  return <Logo size={size} showText={false} href={undefined} className={className} />;
 }

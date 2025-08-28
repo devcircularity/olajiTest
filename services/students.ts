@@ -1,5 +1,5 @@
 // services/students.ts
-import { core } from './api'
+import { api } from './api'
 
 type CreateStudentRequest = {
   first_name: string
@@ -23,17 +23,17 @@ type Student = {
 
 export const studentService = {
   async list() {
-    const { data } = await core.get('/api/students')
+    const { data } = await api.get('/api/students')
     return data as Student[]
   },
   
   async create(body: CreateStudentRequest) {
-    const { data } = await core.post('/api/students', body)
+    const { data } = await api.post('/api/students', body)
     return data as Student
   },
   
   async enroll(body: EnrollStudentRequest) {
-    const { data } = await core.post('/api/students/enroll', body)
+    const { data } = await api.post('/api/students/enroll', body)
     return data
   }
 }

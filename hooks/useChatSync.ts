@@ -23,7 +23,7 @@ export function useChatSync(options: UseChatSyncOptions = {}) {
     refreshInterval = 30000 // 30 seconds
   } = options
 
-  const currentUserId = getCurrentUserId()
+  const currentUserId = getCurrentUserId() ?? undefined
   const refreshTimeoutRef = useRef<NodeJS.Timeout>()
 
   // Set up auto-refresh interval

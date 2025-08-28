@@ -1,7 +1,7 @@
 // services/chats.ts - Updated with block support
 import { api } from './api'
 import { chatEventBus, getCurrentUserId } from '@/utils/chatEventBus'
-import { ChatBlock } from '@/components/chat/tools/types'
+import { Block } from '@/components/chat/tools/types'
 
 // Updated types to match backend EXACTLY
 export type ChatMessage = {
@@ -17,7 +17,7 @@ export type ChatResponse = {
   action_taken?: string
   suggestions?: string[]
   conversation_id?: string
-  blocks?: ChatBlock[]  // NEW: Support for structured blocks
+  blocks?: Block[]  // Support for structured blocks
 }
 
 export type Conversation = {
@@ -57,7 +57,7 @@ export type ConversationDetail = {
 export type DisplayMessage = {
   role: 'user' | 'assistant'
   content: string
-  blocks?: ChatBlock[]  // NEW: Include blocks in display messages
+  blocks?: Block[]  // Include blocks in display messages
 }
 
 // UPDATED: Message transformation utility with blocks support
@@ -85,7 +85,7 @@ export type ConversationList = {
 export const chatService = {
   // Send a message to the chat API (now with conversation support and event broadcasting)
   async sendMessage(message: string, conversationId?: string, context?: Record<string, any>): Promise<ChatResponse> {
-    const userId = getCurrentUserId()
+    const userId = getCurrentUserId() ?? undefined
     
     try {
       const { data } = await api.post('/api/chat/message', {
@@ -151,7 +151,7 @@ export const chatService = {
 
   // Update conversation (rename, archive) with event broadcasting
   async updateConversation(conversationId: string, updates: { title?: string; is_archived?: boolean }): Promise<Conversation> {
-    const userId = getCurrentUserId()
+    const userId = getCurrentUserId() ?? undefined
     
     try {
       const { data } = await api.patch(`/api/chat/conversations/${conversationId}`, updates)
@@ -168,7 +168,7 @@ export const chatService = {
 
   // Delete conversation with event broadcasting
   async deleteConversation(conversationId: string): Promise<void> {
-    const userId = getCurrentUserId()
+    const userId = getCurrentUserId() ?? undefined
     
     try {
       await api.delete(`/api/chat/conversations/${conversationId}`)
@@ -209,7 +209,7 @@ export const chatService = {
 
   // Force refresh of chat data (useful for manual syncing)
   forceRefresh(): void {
-    const userId = getCurrentUserId()
+    const userId = getCurrentUserId() ?? undefined
     chatEventBus.forceRefresh(userId)
   },
 

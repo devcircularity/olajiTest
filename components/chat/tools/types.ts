@@ -10,7 +10,7 @@ export interface KPIItem {
   value: number | string;
   icon?: string;
   variant?: 'primary' | 'success' | 'warning' | 'danger' | 'info';
-  format?: string;
+  format?: FormatType;
   action?: Action;
 }
 
@@ -53,8 +53,20 @@ export interface TableColumn {
   width?: number;
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
-  format?: string;
-  badge?: Record<string, any>;
+  format?: FormatType;
+  badge?: {
+    map: Record<string, BadgeVariant>;
+  };
+}
+
+export type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
+
+export type FormatType = 'integer' | 'decimal' | 'currency:KES' | 'percent' | 'date';
+
+export type StatusState = 'ok' | 'warning' | 'error' | 'unknown';
+
+export interface TableRow extends Record<string, any> {
+  _action?: Action;
 }
 
 export interface TablePagination {
@@ -131,7 +143,7 @@ export interface FileDownloadBlock {
 
 export interface StatusItem {
   label: string;
-  state: 'ok' | 'warning' | 'error' | 'unknown';
+  state: StatusState;
   detail?: string;
 }
 
@@ -204,6 +216,30 @@ export interface ActionPanelBlock {
   columns?: 1 | 2 | 3;
 }
 
+// Form block types
+export interface FormField {
+  key: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'date' | 'number';
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+}
+
+export interface FormConfig {
+  title: string;
+  fields: FormField[];
+  submit: {
+    endpoint: string;
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  };
+}
+
+export interface FormBlock {
+  type: 'form';
+  config: FormConfig;
+}
+
 // Main Block union type (updated)
 export type Block = 
   | TextBlock 
@@ -218,7 +254,11 @@ export type Block =
   | ButtonBlock
   | ButtonGroupBlock
   | ConfirmationBlock
-  | ActionPanelBlock;
+  | ActionPanelBlock
+  | FormBlock;
+
+// Chat block type alias for convenience
+export type ChatBlock = Block;
 
 // Type guards for chart configs (MISSING - ADDED HERE)
 export const isSeriesChartConfig = (config: ChartConfigXY | ChartConfigPie): config is ChartConfigXY => {

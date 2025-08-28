@@ -11,7 +11,7 @@ export default function NewPage() {
 
   const open = async () => {
     try {
-      const c = await chatService.create({ title: 'New Chat' })
+      const c = await chatService.create()
       router.push(`/chat/${c.id}`)
     } catch (error) {
       console.error('Failed to create chat:', error)

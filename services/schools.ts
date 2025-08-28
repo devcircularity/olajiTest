@@ -20,7 +20,7 @@ type UpdateSchoolRequest = {
   academic_year_start?: string
 }
 
-type School = {
+export type School = {
   id: string // Updated to string to match UUID
   name: string
   short_code?: string
@@ -32,26 +32,26 @@ type School = {
   owner_user_id: string
 }
 
-type SchoolLite = {
+export type SchoolLite = {
   id: string
   name: string
 }
 
-type SchoolOverview = {
+export type SchoolOverview = {
   students: number
   classes: number
   feesCollected: number
   pendingInvoices: number
 }
 
-type SchoolMineItem = {
+export type SchoolMineItem = {
   id: string
   name: string
   role: string
 }
 
 // Mobile Device Types
-type MobileDeviceStatus = {
+export type MobileDeviceStatus = {
   device_id: string
   app_version?: string
   device_model?: string
@@ -77,7 +77,7 @@ type MobileDeviceStatus = {
   status_summary: 'connected' | 'issues' | 'offline'
 }
 
-type MobileDeviceListResponse = {
+export type MobileDeviceListResponse = {
   devices: MobileDeviceStatus[]
   total_count: number
   connected_count: number

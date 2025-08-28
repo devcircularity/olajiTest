@@ -1,5 +1,5 @@
 // services/fees.ts
-import { core } from './api'
+import { api } from './api'
 
 type CreateInvoiceRequest = {
   student_id: number
@@ -36,22 +36,22 @@ type Payment = {
 
 export const feeService = {
   async listInvoices() {
-    const { data } = await core.get('/api/fees/invoices')
+    const { data } = await api.get('/api/fees/invoices')
     return data as Invoice[]
   },
   
   async createInvoice(body: CreateInvoiceRequest) {
-    const { data } = await core.post('/api/fees/invoices', body)
+    const { data } = await api.post('/api/fees/invoices', body)
     return data as Invoice
   },
   
   async createInvoiceByAdmission(body: CreateInvoiceByAdmissionRequest) {
-    const { data } = await core.post('/api/fees/invoices/by-admission', body)
+    const { data } = await api.post('/api/fees/invoices/by-admission', body)
     return data as Invoice
   },
   
   async createPayment(body: CreatePaymentRequest) {
-    const { data } = await core.post('/api/fees/payments', body)
+    const { data } = await api.post('/api/fees/payments', body)
     return data as Payment
   }
 }
