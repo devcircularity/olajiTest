@@ -1,9 +1,21 @@
-// components/chat/ChatMessages.tsx - Fixed with initial scroll to bottom only
-
-import React, { useEffect, useRef } from 'react';
+// components/chat/ChatMessages.tsx - Fixed scrolling issues
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import ChatBlockRenderer from './tools/ChatBlockRenderer';
 import { Block, Action } from './tools/types';
+import { Image, FileText, Download, ExternalLink } from 'lucide-react';
+
+interface FileAttachment {
+  attachment_id: string;
+  original_filename: string;
+  content_type: string;
+  file_size: number;
+  cloudinary_url: string;
+  cloudinary_public_id: string;
+  upload_timestamp: string;
+  ocr_processed: boolean;
+  ocr_data?: any;
+}
 
 interface ChatMessage {
   id?: string;
@@ -14,6 +26,7 @@ interface ChatMessage {
   intent?: string;
   response_data?: {
     blocks?: Block[];
+    attachments?: FileAttachment[];
     [key: string]: any;
   };
 }
@@ -29,14 +42,88 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   isLoading = false, 
   onAction 
 }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastUserMessageIndex, setLastUserMessageIndex] = useState<number | null>(null);
+  const previousMessageCount = useRef(messages.length);
 
-  // Scroll to bottom only on initial load of messages
+  // Track when we get new messages
   useEffect(() => {
-    if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    const currentMessageCount = messages.length;
+    
+    // Initial load - scroll to bottom
+    if (isInitialLoad && currentMessageCount > 0) {
+      setTimeout(() => {
+        scrollToBottom();
+        setIsInitialLoad(false);
+      }, 100);
     }
-  }, [messages.length === 0 ? null : messages.length]); // Only trigger when going from 0 to some messages
+    // New messages added
+    else if (currentMessageCount > previousMessageCount.current && !isInitialLoad) {
+      const lastMessage = messages[messages.length - 1];
+      
+      if (lastMessage?.role === 'user') {
+        // User just sent a message - prepare to position it at top when assistant responds
+        setLastUserMessageIndex(messages.length - 1);
+        scrollToBottom(); // For now, scroll to bottom for user message
+      } else if (lastMessage?.role === 'assistant' && lastUserMessageIndex !== null) {
+        // Assistant just responded - position the user's question at the top
+        setTimeout(() => {
+          scrollToUserMessage(lastUserMessageIndex);
+          setLastUserMessageIndex(null);
+        }, 150);
+      }
+    }
+    
+    previousMessageCount.current = currentMessageCount;
+  }, [messages.length, isInitialLoad, lastUserMessageIndex]);
+
+  const scrollToBottom = () => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollToUserMessage = (userMessageIndex: number) => {
+    const container = scrollContainerRef.current;
+    const messagesContainer = messagesContainerRef.current;
+    
+    if (!container || !messagesContainer) return;
+    
+    // Find the user message element
+    const userMessageElement = messagesContainer.querySelector(
+      `[data-message-index="${userMessageIndex}"]`
+    ) as HTMLElement;
+    
+    if (userMessageElement) {
+      // Find the actual header element to get its real height
+      const header = document.querySelector('header');
+      const headerHeight = header ? header.getBoundingClientRect().height : 60;
+      
+      // Add some breathing room below the header
+      const paddingBelowHeader = 16;
+      const totalOffset = headerHeight + paddingBelowHeader;
+      
+      // Get the absolute position of the user message
+      const userMessageRect = userMessageElement.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate how much we need to scroll to position the user message below the header
+      const currentScrollTop = container.scrollTop;
+      const messageTopRelativeToContainer = userMessageRect.top - containerRect.top;
+      const targetScrollTop = currentScrollTop + messageTopRelativeToContainer - totalOffset;
+      
+      container.scrollTo({
+        top: Math.max(0, targetScrollTop),
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const handleBlockAction = async (action: Action) => {
     console.log('Block action triggered:', action);
@@ -49,19 +136,16 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     // Default action handling if no onAction prop provided
     switch (action.type) {
       case 'query':
-        // This would typically send a new message to the chat
         console.log('Query action:', action.payload);
         break;
         
       case 'route':
-        // Navigate to a different page
         if (action.target) {
           window.location.href = action.target;
         }
         break;
         
       case 'download':
-        // Handle downloads
         if (action.endpoint) {
           const link = document.createElement('a');
           link.href = action.endpoint;
@@ -75,7 +159,6 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
         break;
         
       case 'mutation':
-        // Handle API mutations
         if (action.endpoint) {
           try {
             const response = await fetch(action.endpoint, {
@@ -104,90 +187,252 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
     }
   };
 
-  const formatTimestamp = (timestamp?: string) => {
-    if (!timestamp) {
-      return new Date().toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+  // Helper functions for file attachments
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const isImageFile = (contentType: string): boolean => {
+    return contentType.startsWith('image/');
+  };
+
+  const getFileIcon = (contentType: string) => {
+    if (isImageFile(contentType)) {
+      return <Image size={16} className="text-blue-500" />;
+    }
+    return <FileText size={16} className="text-gray-500" />;
+  };
+
+  // Component to render file attachments
+  const FileAttachments: React.FC<{ attachments: FileAttachment[] }> = ({ attachments }) => {
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    
+    if (!attachments || attachments.length === 0) {
+      return null;
     }
 
-    try {
-      const date = new Date(timestamp);
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        return new Date().toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-      }
-      return date.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    } catch (error) {
-      console.error('Error formatting timestamp:', error);
-      return new Date().toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    }
+    const openImagePreview = (imageUrl: string) => {
+      setPreviewImage(imageUrl);
+    };
+
+    const closeImagePreview = () => {
+      setPreviewImage(null);
+    };
+
+    return (
+      <>
+        {/* RIGHT-ALIGNED file attachments grid */}
+        <div className="flex flex-wrap gap-2 justify-end">
+          {attachments.map((attachment, index) => (
+            <div
+              key={attachment.attachment_id || index}
+              className="relative group cursor-pointer"
+              onClick={() => {
+                if (isImageFile(attachment.content_type)) {
+                  openImagePreview(attachment.cloudinary_url);
+                } else {
+                  window.open(attachment.cloudinary_url, '_blank');
+                }
+              }}
+            >
+              {isImageFile(attachment.content_type) ? (
+                // Image preview - FIXED: Responsive sizing that won't cause horizontal scroll
+                <div className="w-32 h-24 xs:w-40 xs:h-28 sm:w-48 sm:h-32 md:w-56 md:h-36 lg:w-64 lg:h-40 rounded-lg overflow-hidden border border-neutral-300 dark:border-neutral-600 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors">
+                  <img
+                    src={attachment.cloudinary_url}
+                    alt={attachment.original_filename}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                // Non-image file preview - FIXED: Responsive sizing
+                <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors flex flex-col items-center justify-center">
+                  <FileText size={24} className="xs:w-6 xs:h-6 sm:w-8 sm:h-8 text-neutral-500 dark:text-neutral-400 mb-2" />
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400 font-medium">
+                    {attachment.content_type === 'application/pdf' ? 'PDF' : 'DOC'}
+                  </span>
+                </div>
+              )}
+              
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div className="flex gap-1 xs:gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isImageFile(attachment.content_type)) {
+                        openImagePreview(attachment.cloudinary_url);
+                      } else {
+                        window.open(attachment.cloudinary_url, '_blank');
+                      }
+                    }}
+                    className="p-1.5 xs:p-2 bg-white dark:bg-neutral-800 rounded-full shadow-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    title="View"
+                  >
+                    <ExternalLink size={12} className="xs:w-3.5 xs:h-3.5 text-neutral-700 dark:text-neutral-300" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const link = document.createElement('a');
+                      link.href = attachment.cloudinary_url;
+                      link.download = attachment.original_filename;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="p-1.5 xs:p-2 bg-white dark:bg-neutral-800 rounded-full shadow-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    title="Download"
+                  >
+                    <Download size={12} className="xs:w-3.5 xs:h-3.5 text-neutral-700 dark:text-neutral-300" />
+                  </button>
+                </div>
+              </div>
+
+              {/* OCR indicator */}
+              {attachment.ocr_processed && (
+                <div className="absolute top-1 right-1 xs:top-2 xs:right-2 w-1.5 h-1.5 xs:w-2 xs:h-2 bg-green-500 rounded-full shadow-sm" title="OCR Processed"></div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Image Preview Modal */}
+        {previewImage && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={closeImagePreview}
+          >
+            <div className="relative max-w-full max-h-full w-full h-full flex items-center justify-center">
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={closeImagePreview}
+                className="absolute top-4 right-4 w-10 h-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full flex items-center justify-center transition-colors"
+                title="Close"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    );
   };
 
   const renderMessage = (message: ChatMessage, index: number) => {
     const isUser = message.role === 'user';
-    const isLastMessage = index === messages.length - 1;
 
-    // Determine which blocks to render
+    // DEBUG LOGGING - Add this to understand what data is available
+    if (message.response_data?.attachments || (message as any).attachments) {
+      console.log('=== MESSAGE WITH ATTACHMENTS DEBUG ===');
+      console.log('Message role:', message.role);
+      console.log('Message content:', message.content);
+      console.log('response_data:', message.response_data);
+      console.log('response_data.attachments:', message.response_data?.attachments);
+      console.log('Direct attachments:', (message as any).attachments);
+      console.log('isUser:', isUser);
+      console.log('Will show attachments:', isUser && message.response_data?.attachments);
+      console.log('=====================================');
+    }
+
+    // Determine which blocks to render (only for assistant messages)
     let blocksToRender: Block[] = [];
-    
-    // For new messages, use blocks field
-    if (message.blocks && message.blocks.length > 0) {
-      blocksToRender = message.blocks;
-    }
-    // For historical messages, use response_data.blocks
-    else if (message.response_data?.blocks && message.response_data.blocks.length > 0) {
-      blocksToRender = message.response_data.blocks;
+    if (!isUser) {
+      if (message.blocks && message.blocks.length > 0) {
+        blocksToRender = message.blocks;
+      } else if (message.response_data?.blocks && message.response_data.blocks.length > 0) {
+        blocksToRender = message.response_data.blocks;
+      }
     }
 
-    // Generate a unique key for each message
+    // Get attachments - Try multiple possible locations
+    let attachments: FileAttachment[] | null = null;
+    if (isUser) {
+      // Primary location: response_data.attachments
+      if (message.response_data?.attachments) {
+        attachments = message.response_data.attachments;
+      }
+      // Fallback: direct attachments property
+      else if ((message as any).attachments) {
+        attachments = (message as any).attachments;
+      }
+    }
+
+    // Additional debug for attachments found
+    if (attachments) {
+      console.log('Found attachments for display:', attachments.length, attachments);
+    }
+
     const messageKey = message.id || `${message.role}-${index}`;
 
     return (
-      <div key={messageKey} className={`mb-6 ${isUser ? 'flex justify-end' : ''}`}>
-        <div className={`max-w-4xl ${isUser ? 'w-fit max-w-2xl' : 'w-full'}`}>
+      <div 
+        key={messageKey} 
+        className={`mb-6 xs:mb-8 ${isUser ? 'flex justify-end' : ''}`}
+        data-message-index={index}
+      >
+        <div className={`w-full ${isUser ? 'max-w-full xs:max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl' : 'max-w-full'}`}>
           
           {isUser ? (
-            // User message - brand colored bubble
-            <div className="inline-block rounded-2xl px-4 py-2 text-white" style={{ backgroundColor: 'var(--color-brand)' }}>
-              <div className="text-sm leading-relaxed">
-                {message.content}
+            // User message - FIXED: Responsive sizing and proper containment with right-aligned attachments
+            <div className="space-y-3 w-full">
+              {/* User message and attachments container - RIGHT ALIGNED */}
+              <div className="flex flex-col items-end space-y-3 w-full">
+                {/* File attachments ABOVE the message - RIGHT ALIGNED */}
+                {attachments && attachments.length > 0 && (
+                  <div className="flex justify-end w-full">
+                    <div className="max-w-full overflow-hidden">
+                      <div className="flex justify-end">
+                        <FileAttachments attachments={attachments} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* User message bubble - FIXED: Proper responsive sizing */}
+                <div className="inline-block rounded-2xl px-3 xs:px-4 py-2 xs:py-3 text-white max-w-full break-words" 
+                     style={{ backgroundColor: 'var(--color-brand)' }}>
+                  <div className="text-sm xs:text-[15px] leading-relaxed">
+                    {message.content}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
-            // Assistant message - no bubble, full width for blocks
-            <div className="space-y-4">
+            // Assistant message - FIXED: Better mobile containment
+            <div className="space-y-3 xs:space-y-4 w-full">
               
               {/* Text content */}
               {message.content && (
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm max-w-none text-neutral-900 dark:text-neutral-100 break-words">
                   <ReactMarkdown
                     components={{
-                      // Customize markdown rendering
-                      h1: ({children}) => <h1 className="text-xl font-semibold mb-3">{children}</h1>,
-                      h2: ({children}) => <h2 className="text-lg font-semibold mb-2">{children}</h2>,
-                      h3: ({children}) => <h3 className="text-base font-semibold mb-2">{children}</h3>,
-                      p: ({children}) => <p className="mb-2 leading-relaxed">{children}</p>,
-                      strong: ({children}) => <strong className="font-semibold">{children}</strong>,
-                      em: ({children}) => <em className="italic">{children}</em>,
+                      h1: ({children}) => <h1 className="text-lg xs:text-xl font-semibold mb-2 xs:mb-3 text-neutral-900 dark:text-neutral-100">{children}</h1>,
+                      h2: ({children}) => <h2 className="text-base xs:text-lg font-semibold mb-2 text-neutral-900 dark:text-neutral-100">{children}</h2>,
+                      h3: ({children}) => <h3 className="text-sm xs:text-base font-semibold mb-2 text-neutral-900 dark:text-neutral-100">{children}</h3>,
+                      p: ({children}) => <p className="mb-2 leading-relaxed text-neutral-900 dark:text-neutral-100 break-words">{children}</p>,
+                      strong: ({children}) => <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{children}</strong>,
+                      em: ({children}) => <em className="italic text-neutral-900 dark:text-neutral-100">{children}</em>,
                       code: ({children}) => (
-                        <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">
+                        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-xs xs:text-sm font-mono text-neutral-900 dark:text-neutral-100 break-all">
                           {children}
                         </code>
                       ),
-                      ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                      li: ({children}) => <li className="leading-relaxed">{children}</li>,
+                      ul: ({children}) => <ul className="list-disc list-inside mb-2 space-y-1 text-neutral-900 dark:text-neutral-100 break-words">{children}</ul>,
+                      ol: ({children}) => <ol className="list-decimal list-inside mb-2 space-y-1 text-neutral-900 dark:text-neutral-100 break-words">{children}</ol>,
+                      li: ({children}) => <li className="leading-relaxed text-neutral-900 dark:text-neutral-100 break-words">{children}</li>,
                     }}
                   >
                     {message.content}
@@ -197,7 +442,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
               
               {/* Rich blocks */}
               {blocksToRender.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3 xs:space-y-4 w-full overflow-hidden">
                   <ChatBlockRenderer 
                     blocks={blocksToRender} 
                     onAction={handleBlockAction}
@@ -207,9 +452,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             </div>
           )}
           
-          {/* Intent only (no timestamp) */}
+          {/* Intent display */}
           {message.intent && !isUser && (
-            <div className="text-xs text-gray-400 mt-1 text-left">
+            <div className="text-xs text-neutral-400 mt-2 text-left break-words">
               • {message.intent}
             </div>
           )}
@@ -219,28 +464,38 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4">
-      <div className="max-w-4xl mx-auto">
-        {messages.map(renderMessage)}
-        
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="mb-6">
-            <div className="max-w-4xl w-full">
-              <div className="flex items-center space-x-2 text-gray-500">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+    <div 
+      ref={scrollContainerRef}
+      className="flex-1 overflow-y-auto overflow-x-hidden h-full"
+      style={{ 
+        // CRITICAL: Ensure proper height calculation
+        height: '100%',
+        maxHeight: '100%'
+      }}
+    >
+      <div 
+        ref={messagesContainerRef}
+        className="min-h-full px-3 xs:px-4 sm:px-6 pt-4 pb-6 xs:pb-8 w-full"
+      >
+        <div className="max-w-4xl mx-auto w-full">
+          {messages.map(renderMessage)}
+          
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="mb-4 xs:mb-6">
+              <div className="max-w-4xl w-full">
+                <div className="flex items-center space-x-2 text-neutral-500">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                  <span className="text-xs xs:text-sm">AI is thinking...</span>
                 </div>
-                <span className="text-sm">AI is thinking...</span>
               </div>
             </div>
-          </div>
-        )}
-        
-        {/* Invisible element to scroll to */}
-        <div ref={messagesEndRef} />
+          )}
+        </div>
       </div>
     </div>
   );

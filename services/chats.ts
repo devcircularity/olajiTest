@@ -1,4 +1,5 @@
-// services/chats.ts - Updated with block support
+// services/chats.ts - Updated with complete message transformation
+
 import { api } from './api'
 import { chatEventBus, getCurrentUserId } from '@/utils/chatEventBus'
 import { Block } from '@/components/chat/tools/types'
@@ -18,6 +19,7 @@ export type ChatResponse = {
   suggestions?: string[]
   conversation_id?: string
   blocks?: Block[]  // Support for structured blocks
+  attachment_processed?: boolean  // Added for file responses
 }
 
 export type Conversation = {
@@ -53,24 +55,58 @@ export type ConversationDetail = {
   messages: Message[]
 }
 
-// UPDATED: Enhanced display message type with blocks
+// UPDATED: Enhanced display message type with complete data preservation
 export type DisplayMessage = {
   role: 'user' | 'assistant'
   content: string
   blocks?: Block[]  // Include blocks in display messages
+  response_data?: Record<string, any>  // ✅ PRESERVE response_data for attachments
+  intent?: string  // Add intent
+  id?: string  // Add id for tracking
+  timestamp?: string  // Add timestamp
 }
 
-// UPDATED: Message transformation utility with blocks support
+// UPDATED: Message transformation utility with complete data preservation
 export const transformMessagesToDisplay = (messages: Message[]): DisplayMessage[] => {
   return messages.map((msg) => {
     const role: 'user' | 'assistant' = msg.message_type === 'USER' ? 'user' : 'assistant'
     
-    return {
+    // Debug logging
+    if (msg.response_data?.attachments) {
+      console.log('=== TRANSFORMING MESSAGE WITH ATTACHMENTS ===');
+      console.log('Original message:', {
+        id: msg.id,
+        message_type: msg.message_type,
+        content: msg.content.substring(0, 50) + '...',
+        response_data: msg.response_data
+      });
+      console.log('Attachments found:', msg.response_data.attachments.length);
+      console.log('Will be role:', role);
+    }
+    
+    const displayMessage: DisplayMessage = {
       role,
       content: msg.content,
-      // Extract blocks from response_data if available
-      blocks: role === 'assistant' && msg.response_data?.blocks ? msg.response_data.blocks : undefined
+      // Extract blocks from response_data if available (for assistant messages)
+      blocks: role === 'assistant' && msg.response_data?.blocks ? msg.response_data.blocks : undefined,
+      // ✅ CRITICAL: Preserve response_data - this contains attachments for user messages
+      response_data: msg.response_data,
+      // ✅ PRESERVE other important fields
+      intent: msg.intent,
+      id: msg.id,
+      timestamp: msg.created_at
     }
+    
+    // Additional debug for transformed message
+    if (displayMessage.response_data?.attachments) {
+      console.log('Transformed display message:', {
+        role: displayMessage.role,
+        hasAttachments: !!displayMessage.response_data?.attachments,
+        attachmentCount: displayMessage.response_data.attachments.length
+      });
+    }
+    
+    return displayMessage;
   })
 }
 
@@ -87,12 +123,23 @@ export const chatService = {
   async sendMessage(message: string, conversationId?: string, context?: Record<string, any>): Promise<ChatResponse> {
     const userId = getCurrentUserId() ?? undefined
     
+    console.log('=== CHAT SERVICE SEND MESSAGE ===')
+    console.log('Message:', message)
+    console.log('ConversationId:', conversationId)
+    console.log('Context:', context)
+    
     try {
       const { data } = await api.post('/api/chat/message', {
         message,
         conversation_id: conversationId,
         context
       } as ChatMessage)
+      
+      console.log('Chat service response:', {
+        conversation_id: data.conversation_id,
+        intent: data.intent,
+        response_preview: data.response?.substring(0, 100)
+      })
       
       // Broadcast event for real-time sync
       if (data.conversation_id) {
@@ -109,6 +156,90 @@ export const chatService = {
     } catch (error) {
       console.error('Failed to send message:', error)
       throw error
+    }
+  },
+
+  // NEW: Send message with files using the same conversation handling logic
+  async sendMessageWithFiles(
+    message: string, 
+    files: File[], 
+    conversationId?: string
+  ): Promise<ChatResponse> {
+    const userId = getCurrentUserId() ?? undefined
+    
+    console.log('=== CHAT SERVICE SEND MESSAGE WITH FILES ===')
+    console.log('Message:', message)
+    console.log('Files count:', files.length)
+    console.log('ConversationId:', conversationId)
+    console.log('ConversationId type:', typeof conversationId)
+    console.log('ConversationId truthy:', !!conversationId)
+    
+    // Validate conversation ID properly
+    if (conversationId && conversationId !== 'new' && conversationId !== 'undefined') {
+      console.log('✅ Using existing conversation:', conversationId)
+    } else {
+      console.log('📝 Will create new conversation')
+      conversationId = undefined // Ensure it's properly undefined
+    }
+    
+    const formData = new FormData();
+    formData.append('message', message);
+    
+    // Only append conversation_id if it's a valid existing conversation
+    if (conversationId) {
+      console.log('Appending conversation_id to form:', conversationId)
+      formData.append('conversation_id', conversationId);
+    } else {
+      console.log('Not appending conversation_id - will create new')
+    }
+    
+    // Append files
+    files.forEach((file, index) => {
+      console.log(`Appending file ${index}:`, file.name)
+      formData.append('files', file);
+    });
+
+    // Debug FormData
+    console.log('FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      if (key === 'files') {
+        console.log(`  ${key}: [File object]`)
+      } else {
+        console.log(`  ${key}:`, value)
+      }
+    }
+
+    try {
+      console.log('🚀 Making API call to /api/chat/message-with-files')
+      const { data } = await api.post('/api/chat/message-with-files', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 120000, // 2 minutes timeout for file processing
+      });
+      
+      console.log('File message response:', {
+        conversation_id: data.conversation_id,
+        intent: data.intent,
+        attachment_processed: data.attachment_processed,
+        response_preview: data.response?.substring(0, 100)
+      })
+      
+      // Broadcast event for real-time sync
+      if (data.conversation_id) {
+        if (!conversationId) {
+          // New conversation created
+          chatEventBus.conversationCreated(data.conversation_id, { title: message.slice(0, 50) }, userId)
+        } else {
+          // Message added to existing conversation
+          chatEventBus.messageSent(data.conversation_id, { message, response: data.response }, userId)
+        }
+      }
+      
+      return data
+    } catch (error: any) {
+      console.error('Failed to send message with files:', error)
+      throw new Error(error.response?.data?.detail || error.message || 'File processing failed')
     }
   },
 
@@ -131,13 +262,45 @@ export const chatService = {
     }
   },
 
-  // UPDATED: Get conversation with all messages and proper transformation including blocks
+  // UPDATED: Get conversation with all messages and proper transformation including attachments
   async getConversation(conversationId: string): Promise<ConversationDetail & { displayMessages: DisplayMessage[] }> {
     try {
+      console.log('=== GETTING CONVERSATION ===', conversationId);
+      
       const { data } = await api.get(`/api/chat/conversations/${conversationId}`)
       
-      // Transform the messages to the display format with blocks
+      console.log('Raw conversation data:', {
+        id: data.id,
+        title: data.title,
+        messageCount: data.messages?.length || 0
+      });
+      
+      // Log messages with attachments
+      if (data.messages) {
+        data.messages.forEach((msg: Message, index: number) => {
+          if (msg.response_data?.attachments) {
+            console.log(`Message ${index} has attachments:`, {
+              message_type: msg.message_type,
+              content: msg.content.substring(0, 50),
+              attachments: msg.response_data.attachments.length
+            });
+          }
+        });
+      }
+      
+      // Transform the messages to the display format with complete data preservation
       const displayMessages = transformMessagesToDisplay(data.messages || [])
+      
+      console.log('Transformed display messages:', displayMessages.length);
+      displayMessages.forEach((msg, index) => {
+        if (msg.response_data?.attachments) {
+          console.log(`Display message ${index}:`, {
+            role: msg.role,
+            hasAttachments: true,
+            attachmentCount: msg.response_data.attachments.length
+          });
+        }
+      });
       
       return {
         ...data,
@@ -233,7 +396,7 @@ export const chatService = {
         title: conversation.title,
         is_starred: false
       },
-      // Use the properly transformed messages with blocks
+      // Use the properly transformed messages with complete data preservation
       messages: conversation.displayMessages
     }
   },

@@ -1,9 +1,10 @@
-// components/ChatOptionsMenu.tsx - Updated for backend integration
+// components/ChatOptionsMenu.tsx - Updated with custom confirmation modal
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { MoreHorizontal, Archive, ArchiveRestore, Edit2, Trash2 } from 'lucide-react'
 import { chatService, type Conversation } from '@/services/chats'
+import ConfirmationModal from '@/components/ui/ConfirmationModal'
 
 interface ChatOptionsMenuProps {
   chat: Conversation
@@ -15,6 +16,7 @@ interface ChatOptionsMenuProps {
 export default function ChatOptionsMenu({ chat, onUpdate, onDelete, forceVisible = false }: ChatOptionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [newTitle, setNewTitle] = useState(chat.title)
   const [isLoading, setIsLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -96,27 +98,30 @@ export default function ChatOptionsMenu({ chat, onUpdate, onDelete, forceVisible
     setIsRenaming(false)
   }
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+    setIsOpen(false)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteConfirm = async () => {
     if (isLoading) return
     
-    const confirmMessage = `Are you sure you want to delete "${chat.title}"? This action cannot be undone.`
-    if (confirm(confirmMessage)) {
-      setIsLoading(true)
-      try {
-        await chatService.deleteConversation(chat.id)
-        onDelete(chat.id)
-      } catch (error) {
-        console.error('Failed to delete chat:', error)
-      } finally {
-        setIsLoading(false)
-        setIsOpen(false)
-      }
-    } else {
-      setIsOpen(false)
+    setIsLoading(true)
+    try {
+      await chatService.deleteConversation(chat.id)
+      onDelete(chat.id)
+    } catch (error) {
+      console.error('Failed to delete chat:', error)
+    } finally {
+      setIsLoading(false)
+      setShowDeleteModal(false)
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false)
   }
 
   if (isRenaming) {
@@ -143,61 +148,75 @@ export default function ChatOptionsMenu({ chat, onUpdate, onDelete, forceVisible
   }
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsOpen(!isOpen)
-        }}
-        className={`p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-opacity disabled:opacity-50 ${
-          forceVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
-        title="Chat options"
-        disabled={isLoading}
-      >
-        <MoreHorizontal size={16} />
-      </button>
+    <>
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setIsOpen(!isOpen)
+          }}
+          className={`p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-opacity disabled:opacity-50 ${
+            forceVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
+          title="Chat options"
+          disabled={isLoading}
+        >
+          <MoreHorizontal size={16} />
+        </button>
 
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 z-50 min-w-[160px]">
-          <button
-            onClick={handleArchive}
-            disabled={isLoading}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-          >
-            {chat.is_archived ? (
-              <>
-                <ArchiveRestore size={16} />
-                Unarchive
-              </>
-            ) : (
-              <>
-                <Archive size={16} />
-                Archive
-              </>
-            )}
-          </button>
-          
-          <button
-            onClick={handleRename}
-            disabled={isLoading}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors disabled:opacity-50"
-          >
-            <Edit2 size={16} />
-            Rename
-          </button>
-          
-          <button
-            onClick={handleDelete}
-            disabled={isLoading}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
-          >
-            <Trash2 size={16} />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
+        {isOpen && (
+          <div className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 z-50 min-w-[160px]">
+            <button
+              onClick={handleArchive}
+              disabled={isLoading}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              {chat.is_archived ? (
+                <>
+                  <ArchiveRestore size={16} />
+                  Unarchive
+                </>
+              ) : (
+                <>
+                  <Archive size={16} />
+                  Archive
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={handleRename}
+              disabled={isLoading}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <Edit2 size={16} />
+              Rename
+            </button>
+            
+            <button
+              onClick={handleDeleteClick}
+              disabled={isLoading}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        title="Delete chat"
+        message="Are you sure you want to delete this chat?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
+    </>
   )
 }

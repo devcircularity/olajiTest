@@ -1,27 +1,46 @@
-// app/(workspace)/page.tsx - Fixed to use 'new' route
+// app/(workspace)/page.tsx - Fixed suggestions integration and ref issue
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import HeaderBar from '@/components/HeaderBar'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
+import ChatInput from '@/components/chat/ChatInput'
 
 export default function Landing() {
   const { isAuthenticated } = useAuthGuard()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [q, setQ] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  const submit = async (text?: string) => {
-    const message = (text ?? q).trim()
+  // Enhanced submit handler that properly handles file processing context
+  const submit = async (text?: string, context?: any) => {
+    const message = text?.trim()
     if (!message || busy) return
     setBusy(true)
+    
     try {
-      // Store the initial message to send when the new chat page loads
+      console.log('=== LANDING PAGE SUBMIT ===')
+      console.log('Message:', message)
+      console.log('Context:', context)
+      
+      // SPECIAL CASE: Handle file processing completion context
+      if (context?.type === 'file_processing_complete') {
+        console.log('File processing completed, redirecting to conversation:', context.conversation_id)
+        // Files were processed and a new conversation was created
+        // Navigate directly to the new conversation
+        router.push(`/chat/${context.conversation_id}`)
+        return
+      }
+      
+      // REGULAR CASE: Store the initial message and navigate to new chat
+      console.log('Storing initial message for new chat')
       sessionStorage.setItem(`chat-new-initial`, message)
+      if (context && context.type !== 'file_processing_complete') {
+        sessionStorage.setItem(`chat-new-context`, JSON.stringify(context))
+      }
+      
       // Navigate to the new chat route
       router.push(`/chat/new`)
+      
     } catch (error) {
       console.error('Failed to create chat:', error)
     } finally {
@@ -29,14 +48,14 @@ export default function Landing() {
     }
   }
 
-  const populateInput = (text: string) => {
-    setQ(text)
-    inputRef.current?.focus()
+  const handleSuggestionClick = (prompt: string) => {
+    // Send the suggestion directly
+    submit(prompt)
   }
 
   const QuickBtn = ({ label, prompt }: { label: string; prompt: string }) => (
     <button
-      onClick={() => populateInput(prompt)}
+      onClick={() => handleSuggestionClick(prompt)}
       className="rounded-xl bg-neutral-200/70 px-4 py-2 text-sm dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition disabled:opacity-60"
       disabled={busy}
     >
@@ -50,84 +69,56 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-0px)] grid grid-rows-[auto_1fr_auto]">
-      <HeaderBar />
-
-      {/* Center stage */}
-      <main className="grid place-items-center">
-        <div className="w-full max-w-3xl px-4">
-          {/* Logo */}
-          <div className="text-center select-none mb-6">
-            <div className="text-[52px] sm:text-[64px] font-semibold tracking-tight">
-              <span className="text-neutral-900 dark:text-neutral-100">School</span>{' '}
-              <span style={{ color: 'var(--color-brand)' }}>Chat</span>
-            </div>
+    <div className="h-full flex items-center justify-center">
+      <div className="w-full max-w-3xl px-4 sm:px-6 lg:px-8">
+        {/* Logo */}
+        <div className="text-center select-none mb-8">
+          <div className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-semibold tracking-tight">
+            <span className="text-neutral-900 dark:text-neutral-100">Olaji</span>{' '}
+            <span style={{ color: 'var(--color-brand)' }}>Chat</span>
           </div>
-
-          {/* Search / chat bar */}
-          <div className="mx-auto max-w-2xl">
-            <div className="flex items-center gap-3 rounded-full border border-neutral-300/70 dark:border-white/10 bg-white/80 dark:bg-neutral-900/70 px-4 py-3 shadow-[var(--shadow-soft)]">
-              <span className="text-neutral-500">⌕</span>
-              <input
-                ref={inputRef}
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') submit() }}
-                placeholder="Ask your school… e.g., create class P4 East"
-                className="w-full bg-transparent outline-none text-sm sm:text-base"
-                disabled={busy}
-                aria-label="Search or chat"
-              />
-              <button
-                onClick={() => submit()}
-                className="rounded-full px-4 py-2 text-sm text-white bg-[--color-brand] hover:bg-[--color-brand-dark] transition disabled:opacity-60"
-                disabled={busy || !q.trim()}
-              >
-                {busy ? '…' : 'Search'}
-              </button>
-            </div>
-
-            {/* Primary buttons like Google */}
-            <div className="mt-6 flex items-center justify-center gap-3">
-              <button
-                onClick={() => populateInput('help me get started with school management')}
-                className="rounded-xl bg-neutral-200/70 px-4 py-2 text-sm dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition disabled:opacity-60"
-                disabled={busy}
-              >
-                School Chat Search
-              </button>
-              <button
-                onClick={() => populateInput('help')}
-                className="rounded-xl bg-neutral-200/70 px-4 py-2 text-sm dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition disabled:opacity-60"
-                disabled={busy}
-              >
-                I'm Feeling Curious
-              </button>
-            </div>
-
-            {/* Shortcut "chips" */}
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <QuickBtn label="Create Class" prompt="create class P4 East" />
-              <QuickBtn label="List Students" prompt="list students" />
-              <QuickBtn label="Enroll Student" prompt="enroll student John Doe admission 123 into P4 East" />
-              <QuickBtn label="Create Invoice" prompt="create invoice for student 123 amount 15000" />
-              <QuickBtn label="Record Payment" prompt="record payment invoice 1 amount 15000" />
-            </div>
+          <div className="mt-3 text-base sm:text-lg text-neutral-600 dark:text-neutral-400">
+            Your AI assistant for school management
           </div>
         </div>
-      </main>
 
-      {/* Footer (thin bar) */}
-      <footer className="text-xs text-neutral-600 dark:text-neutral-400 border-t border-neutral-200/70 dark:border-white/10">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:items-center sm:justify-between">
-          <div>Kenya</div>
-          <div className="flex gap-4">
-            <a className="link-subtle" href="#">Privacy</a>
-            <a className="link-subtle" href="#">Terms</a>
-            <a className="link-subtle" href="#">About</a>
-          </div>
+        {/* Chat Input - FIXED: Removed ref prop */}
+        <div className="mx-auto max-w-2xl mb-6">
+          <ChatInput 
+            onSend={submit}
+            busy={busy}
+            // No onSendWithFiles handler - let ChatInput handle files directly
+            // No conversationId - this is a new chat
+          />
         </div>
-      </footer>
+
+        {/* Primary buttons like Google */}
+        <div className="mb-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            onClick={() => handleSuggestionClick('help me get started with school management')}
+            className="w-full sm:w-auto rounded-xl bg-neutral-200/70 px-6 py-3 text-sm font-medium dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition disabled:opacity-60"
+            disabled={busy}
+          >
+            School Chat Search
+          </button>
+          <button
+            onClick={() => handleSuggestionClick('help')}
+            className="w-full sm:w-auto rounded-xl bg-neutral-200/70 px-6 py-3 text-sm font-medium dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition disabled:opacity-60"
+            disabled={busy}
+          >
+            I'm Feeling Curious
+          </button>
+        </div>
+
+        {/* Shortcut "chips" */}
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto">
+          <QuickBtn label="Create Class" prompt="create class P4 East" />
+          <QuickBtn label="List Students" prompt="list students" />
+          <QuickBtn label="Enroll Student" prompt="enroll student John Doe admission 123 into P4 East" />
+          <QuickBtn label="Create Invoice" prompt="create invoice for student 123 amount 15000" />
+          <QuickBtn label="Record Payment" prompt="record payment invoice 1 amount 15000" />
+        </div>
+      </div>
     </div>
   )
 }

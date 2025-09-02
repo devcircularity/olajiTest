@@ -6,6 +6,21 @@
   --color-brand-dark: #104f73;
   --color-brand-light: #3caedb;
 
+  /* Error/Danger colors */
+  --color-error: #dc2626;
+  --color-error-dark: #991b1b;
+  --color-error-light: #f87171;
+
+  /* Warning colors */
+  --color-warning: #d97706;
+  --color-warning-dark: #92400e;
+  --color-warning-light: #fbbf24;
+
+  /* Success colors */
+  --color-success: #059669;
+  --color-success-dark: #047857;
+  --color-success-light: #10b981;
+
   --radius-xl2: 1rem;
   --shadow-soft: 0 10px 30px rgba(2, 6, 23, 0.06);
 }
@@ -50,6 +65,57 @@ a {
   opacity: 0.9;
 }
 
+/* Error/Danger button */
+.btn-danger {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium
+         text-white transition-colors duration-200
+         disabled:opacity-70 disabled:cursor-not-allowed;
+  background-color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-error-dark);
+}
+
+.btn-danger:active:not(:disabled) {
+  background-color: var(--color-error-dark);
+  opacity: 0.9;
+}
+
+/* Warning button */
+.btn-warning {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium
+         text-white transition-colors duration-200
+         disabled:opacity-70 disabled:cursor-not-allowed;
+  background-color: var(--color-warning);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--color-warning-dark);
+}
+
+.btn-warning:active:not(:disabled) {
+  background-color: var(--color-warning-dark);
+  opacity: 0.9;
+}
+
+/* Success button */
+.btn-success {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-3 font-medium
+         text-white transition-colors duration-200
+         disabled:opacity-70 disabled:cursor-not-allowed;
+  background-color: var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--color-success-dark);
+}
+
+.btn-success:active:not(:disabled) {
+  background-color: var(--color-success-dark);
+  opacity: 0.9;
+}
+
 .input {
   @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2
          outline-none focus:ring-2 focus:ring-[--color-brand]
@@ -67,8 +133,15 @@ a {
 .helper { @apply text-xs text-neutral-500 dark:text-neutral-400; }
 
 /* Invalid states */
-.input-invalid { @apply border-red-500/70 focus:ring-red-500; }
-.error-text { @apply text-sm text-red-600 dark:text-red-400; }
+.input-invalid { 
+  @apply border-red-500/70 focus:ring-red-500; 
+  border-color: var(--color-error);
+  --tw-ring-color: var(--color-error);
+}
+.error-text { 
+  @apply text-sm;
+  color: var(--color-error);
+}
 
 /* Buttons */
 .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition; }
@@ -139,25 +212,13 @@ a {
   padding-inline: 1rem;
 }
 
-
 /* Chat options always visible on active chat */
 .chat-options-active {
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-
-
-
-/* Add these button styles to your existing globals.css */
-
-/* Base button class */
-.btn { 
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition-colors duration-200
-         disabled:opacity-70 disabled:cursor-not-allowed;
-}
-
-/* Button variants */
+/* Overridden button styles to use theme colors */
 .btn-primary {
   @apply bg-gray-50 hover:bg-gray-100 border border-gray-200 
          dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600;
@@ -170,19 +231,23 @@ a {
   color: var(--color-brand);
 }
 
+/* Updated button variants to use theme colors */
 .btn-success {
-  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200 text-green-700
-         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-green-400;
+  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200
+         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600;
+  color: var(--color-success);
 }
 
 .btn-warning {
-  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200 text-yellow-700
-         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-yellow-400;
+  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200
+         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600;
+  color: var(--color-warning);
 }
 
 .btn-danger {
-  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200 text-red-700
-         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-red-400;
+  @apply bg-gray-50 hover:bg-gray-100 border border-gray-200
+         dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600;
+  color: var(--color-error);
 }
 
 .btn-outline {

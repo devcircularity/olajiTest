@@ -1,4 +1,4 @@
-// components/layout/WorkspaceSidebar - Enhanced with better chat syncing
+// components/layout/WorkspaceSidebar - Enhanced with auto-collapse on navigation and reduced spacing
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
@@ -44,9 +44,11 @@ interface Chat {
 export default function Sidebar({
   collapsed,
   onCollapse,
+  isMobile = false,
 }: {
   collapsed: boolean
   onCollapse: (v: boolean) => void
+  isMobile?: boolean
 }) {
   const [chats, setChats] = useState<Chat[]>([])
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -71,6 +73,15 @@ export default function Sidebar({
   const schoolId = claims?.active_school_id
   const userLabel = name || email || 'Guest'
   const avatarTxt = initialsFrom(name, email)
+
+  // Auto-collapse helper function
+  const handleNavigation = useCallback(() => {
+    // Always collapse after navigation to show content
+    // This is especially important on mobile to clear the overlay
+    if (!collapsed) {
+      onCollapse(true)
+    }
+  }, [collapsed, onCollapse])
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -202,11 +213,40 @@ export default function Sidebar({
     // If we're currently viewing the deleted chat, redirect to new chat
     if (currentChatId === chatId) {
       router.replace('/chat/new')
+      handleNavigation() // Collapse after navigation
     }
   }
 
   const handleManualRefresh = () => {
     loadChats(true)
+  }
+
+  // Enhanced navigation handlers with auto-collapse
+  const handleNewChat = () => {
+    router.push('/')
+    handleNavigation()
+  }
+
+  const handleSchoolNavigation = () => {
+    router.push(`/school/${schoolId}`)
+    handleNavigation()
+  }
+
+  const handleChatNavigation = (chatId: string) => {
+    router.push(`/chat/${chatId}`)
+    handleNavigation()
+  }
+
+  const handleSettingsNavigation = () => {
+    setShowUserMenu(false)
+    router.push('/settings/profile')
+    handleNavigation()
+  }
+
+  const handleLogout = () => {
+    logout()
+    setShowUserMenu(false)
+    // No need to call handleNavigation as user will be redirected to login
   }
 
   if (!isAuthenticated) {
@@ -223,10 +263,10 @@ export default function Sidebar({
       `}
       onClick={collapsed ? () => onCollapse(false) : undefined}
     >
-      {/* Header with logo/brand */}
-      <div className="p-4">
+      {/* Header with logo/brand - Aligned with other elements */}
+      <div className="px-2 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center ml-2">
             {collapsed ? (
               <LogoIcon size="sm" />
             ) : (
@@ -247,18 +287,16 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* New Chat Button */}
-      <div className="p-3" onClick={collapsed ? (e) => e.stopPropagation() : undefined}>
+      {/* New Chat Button - Better alignment with chat items */}
+      <div className="px-2 pb-2" onClick={collapsed ? (e) => e.stopPropagation() : undefined}>
         <button
-          className="w-full rounded-xl py-2.5 px-3 flex items-center font-medium transition-colors duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          className="w-full rounded-xl py-2 px-1 flex items-center font-medium transition-colors duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           style={{ color: 'var(--color-brand)' }}
-          onClick={() => {
-            router.push('/chat/new')
-          }}
+          onClick={handleNewChat}
           title="New Chat"
         >
           <div 
-            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ml-2"
             style={{ backgroundColor: 'var(--color-brand)' }}
           >
             <Plus size={14} className="text-white" />
@@ -271,28 +309,28 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* My School Navigation - show in both collapsed and expanded states */}
+      {/* My School Navigation - Better alignment with chat items */}
       {schoolId && (
-        <div className="px-3 pb-3" onClick={collapsed ? (e) => e.stopPropagation() : undefined}>
-          <Link
-            href={`/school/${schoolId}`}
-            className="flex items-center px-3 py-2.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-700 dark:text-neutral-200"
+        <div className="px-2 pb-2" onClick={collapsed ? (e) => e.stopPropagation() : undefined}>
+          <button
+            onClick={handleSchoolNavigation}
+            className="w-full flex items-center px-1 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-700 dark:text-neutral-200"
             title={collapsed ? "My School" : undefined}
           >
-            <GraduationCap size={18} className="flex-shrink-0" />
+            <GraduationCap size={18} className="flex-shrink-0 ml-2" />
             {!collapsed && (
               <div className="ml-3 overflow-hidden">
                 <span className="text-sm font-medium whitespace-nowrap block">My School</span>
               </div>
             )}
-          </Link>
+          </button>
         </div>
       )}
 
       {/* Chat History - only show when expanded */}
       {!collapsed && (
         <>
-          <div className="px-3 py-2 flex items-center justify-between">
+          <div className="px-2 py-1 flex items-center justify-between">
             <h3 className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 font-medium">
               Recents
             </h3>
@@ -302,7 +340,7 @@ export default function Sidebar({
           </div>
 
           <div className="flex-1 overflow-auto px-2">
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {loading && !refreshing ? (
                 <div className="px-3 py-2 text-sm text-neutral-500">Loading chats...</div>
               ) : error ? (
@@ -335,14 +373,15 @@ export default function Sidebar({
                       className={`
                         group flex items-center rounded-lg transition-colors
                         ${isActive 
-                          ? 'bg-neutral-200 dark:bg-neutral-700' 
+                          ? 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-250 dark:hover:bg-neutral-650' 
                           : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
                         }
                       `}
                     >
-                      <Link 
-                        href={`/chat/${chat.id}`} 
-                        className="flex items-center flex-1 px-3 py-2.5 min-w-0"
+                      {/* Enhanced chat link with auto-collapse and reduced padding */}
+                      <button
+                        onClick={() => handleChatNavigation(chat.id)}
+                        className="flex items-center flex-1 px-3 py-1.5 min-w-0 text-left rounded-lg hover:bg-transparent"
                       >
                         {chat.is_starred && (
                           <Star size={14} className="mr-2 text-yellow-400 fill-yellow-400 flex-shrink-0" />
@@ -352,7 +391,7 @@ export default function Sidebar({
                             {chat.title}
                           </span>
                         </div>
-                      </Link>
+                      </button>
                       <div className="flex-shrink-0">
                         <ChatOptionsMenu 
                           chat={{
@@ -381,7 +420,7 @@ export default function Sidebar({
       {/* Spacer to push user section to bottom when collapsed */}
       {collapsed && <div className="flex-1" />}
 
-      {/* User Section at Bottom - Enhanced to match HeaderBar styling */}
+      {/* User Section at Bottom - Enhanced with auto-collapse navigation */}
       {token && (
         <div 
           className="border-t border-neutral-200/70 dark:border-white/10 p-3 mt-auto" 
@@ -428,7 +467,7 @@ export default function Sidebar({
               )}
             </button>
 
-            {/* User Menu Dropdown - Enhanced positioning and styling */}
+            {/* User Menu Dropdown - Enhanced with auto-collapse navigation */}
             {showUserMenu && (
               <div 
                 className={`
@@ -465,20 +504,14 @@ export default function Sidebar({
                 </button>
                 
                 <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    router.push('/settings/profile');
-                  }}
+                  onClick={handleSettingsNavigation}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors"
                 >
                   <Settings size={16} />
                   Settings
                 </button>
                 <button
-                  onClick={() => {
-                    logout();
-                    setShowUserMenu(false);
-                  }}
+                  onClick={handleLogout}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 text-red-600 dark:text-red-400 transition-colors"
                 >
                   <LogOut size={16} />
