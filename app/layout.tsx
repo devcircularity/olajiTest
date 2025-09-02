@@ -3,7 +3,7 @@ import './globals.css'
 import React from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
 
-export const metadata = { title: 'School Chat Alpha' }
+export const metadata = { title: 'Olaji Chat' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
