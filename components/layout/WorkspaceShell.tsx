@@ -1,24 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Sidebar from './WorkspaceSidebar'
-import CanvasPanel from './WorkspaceCanvas'
 import HeaderBar from './HeaderBar'
-
-// Simple event bus so any page/component can open the canvas
-type CanvasCommand = { type: 'open' | 'close' | 'toggle', width?: number }
-type Listener = (cmd: CanvasCommand) => void
-
-const listeners = new Set<Listener>()
-export const CanvasBus = {
-  send(cmd: CanvasCommand) { listeners.forEach(l => l(cmd)) },
-  on(l: Listener) { 
-    listeners.add(l); 
-    return () => { 
-      listeners.delete(l) 
-    } 
-  }
-}
 
 // Sidebar toggle bus for header integration and auto-collapse
 type SidebarCommand = { type: 'toggle' | 'open' | 'close' | 'auto-collapse' }
@@ -97,53 +81,10 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
     return unsubscribe
   }, [toggleSidebar, isMobile, collapsed])
 
-  // Canvas open/width state (persist). Closed by default, disabled on mobile
-  const [canvasOpen, setCanvasOpen] = useState<boolean>(false)
-  const [canvasWidth, setCanvasWidth] = useState<number>(420)
-  
-  useEffect(() => {
-    // Canvas is desktop-only
-    if (isMobile) {
-      setCanvasOpen(false)
-      return
-    }
-    
-    const open = localStorage.getItem('canvas_open')
-    const w = localStorage.getItem('canvas_width')
-    if (open) setCanvasOpen(open === '1')
-    if (w) setCanvasWidth(Math.max(320, Math.min(800, parseInt(w, 10) || 420)))
-    
-    const unsubscribe = CanvasBus.on((cmd) => {
-      if (isMobile) return // Ignore canvas commands on mobile
-      
-      if (cmd.type === 'open') setCanvasOpen(true)
-      if (cmd.type === 'close') setCanvasOpen(false)
-      if (cmd.type === 'toggle') setCanvasOpen(o => !o)
-      if (cmd.width) setCanvasWidth(Math.max(320, Math.min(800, cmd.width)))
-    })
-    
-    return unsubscribe
-  }, [isMobile])
-  
-  useEffect(() => { 
-    if (!isMobile) {
-      localStorage.setItem('canvas_open', canvasOpen ? '1' : '0') 
-    }
-  }, [canvasOpen, isMobile])
-  
-  useEffect(() => { 
-    if (!isMobile) {
-      localStorage.setItem('canvas_width', String(canvasWidth)) 
-    }
-  }, [canvasWidth, isMobile])
-
-  // Mobile overlay backdrop when sidebar is open
-  const showMobileOverlay = isMobile && !collapsed
-
   return (
     <div className="h-svh w-full overflow-hidden">
       <div className="flex-1 overflow-hidden relative h-full">
-        {/* Mobile overlay backdrop */}
+        {/* Mobile overlay backdrop when sidebar is open */}
         {isMobile && !collapsed && (
           <div 
             className="fixed inset-0 bg-black/50 z-30"
@@ -151,7 +92,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
           />
         )}
         
-        {/* Content row: sidebar | main | canvas - CRITICAL: Fixed height flow */}
+        {/* Content row: sidebar | main - Fixed height flow */}
         <div className="relative flex overflow-hidden h-full">
           {/* Sidebar - Always visible on desktop, overlay on mobile */}
           <div className={`
@@ -168,26 +109,16 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
             />
           </div>
 
-          {/* Main content area with header - CRITICAL: Fixed flex layout */}
+          {/* Main content area with header - Fixed flex layout */}
           <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
             <div className="flex-shrink-0">
               <HeaderBar />
             </div>
-            {/* CRITICAL: This div must have proper height constraints */}
+            {/* Main content area - proper height constraints */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {children}
             </div>
           </div>
-
-          {/* Canvas (desktop-only, retractable, resizable) */}
-          {!isMobile && (
-            <CanvasPanel
-              open={canvasOpen}
-              width={canvasWidth}
-              onResize={setCanvasWidth}
-              onRequestClose={() => setCanvasOpen(false)}
-            />
-          )}
         </div>
       </div>
     </div>

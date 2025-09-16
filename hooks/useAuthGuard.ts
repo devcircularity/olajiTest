@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
-export function useAuthGuard(redirectTo: string = '/login') {
+export function useAuthGuard(redirectTo: string = '/public') { // Changed default from '/login' to '/public'
   const { token, isLoading } = useAuth()
   const router = useRouter()
 
@@ -14,10 +14,8 @@ export function useAuthGuard(redirectTo: string = '/login') {
     if (isLoading) return
     
     if (!token) {
-      // Redirect to login with current path as next parameter
-      const currentPath = window.location.pathname + window.location.search
-      const loginUrl = `${redirectTo}?next=${encodeURIComponent(currentPath)}`
-      router.replace(loginUrl)
+      // Redirect to public instead of login with next parameter
+      router.replace(redirectTo)
     }
   }, [token, isLoading, router, redirectTo])
 

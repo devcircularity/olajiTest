@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { whatsappService } from '@/services/whatsapp'
+import { whatsappService } from '@/qservices/whatsapp'
 
 interface WhatsAppConnectionProps {
   schoolId: string

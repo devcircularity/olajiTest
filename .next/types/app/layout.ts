@@ -1,4 +1,4 @@
-// File: /Users/ericmwirichia/Documents/SchoolAI/doneFrontend/app/layout.tsx
+// File: /Users/ericmwirichia/Documents/SchoolAI/admin-frontend/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

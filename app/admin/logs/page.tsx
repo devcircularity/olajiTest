@@ -1,0 +1,213 @@
+// app/admin/logs/page.tsx
+"use client";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewLogs } from "@/utils/permissions";
+import DataTable, { TableColumn } from "@/components/ui/DataTable";
+import { Calendar, Filter, Download } from "lucide-react";
+import Button from "@/components/ui/Button";
+
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  level: 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+  message: string;
+  user_id?: string;
+  user_email?: string;
+  school_id?: string;
+  endpoint?: string;
+  ip_address?: string;
+  user_agent?: string;
+}
+
+export default function LogsPage() {
+  const { user } = useAuth();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Yesterday
+    end: new Date().toISOString().split('T')[0] // Today
+  });
+
+  // Mock data for now - replace with actual API call
+  useEffect(() => {
+    // Simulate loading logs
+    setTimeout(() => {
+      const mockLogs: LogEntry[] = [
+        {
+          id: '1',
+          timestamp: new Date().toISOString(),
+          level: 'INFO',
+          message: 'User login successful',
+          user_email: 'john@example.com',
+          endpoint: '/api/auth/login',
+          ip_address: '192.168.1.1'
+        },
+        {
+          id: '2',
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          level: 'WARN',
+          message: 'Failed login attempt',
+          endpoint: '/api/auth/login',
+          ip_address: '192.168.1.5'
+        },
+        {
+          id: '3',
+          timestamp: new Date(Date.now() - 7200000).toISOString(),
+          level: 'ERROR',
+          message: 'Database connection timeout',
+          endpoint: '/api/users',
+          ip_address: '10.0.0.1'
+        }
+      ];
+      setLogs(mockLogs);
+      setLoading(false);
+    }, 1000);
+  }, [dateRange, selectedLevel]);
+
+  const columns: TableColumn<LogEntry>[] = [
+    {
+      key: 'timestamp',
+      label: 'Time',
+      render: (timestamp: string) => 
+        new Date(timestamp).toLocaleString(),
+      width: '180px',
+    },
+    {
+      key: 'level',
+      label: 'Level',
+      render: (level: string) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            level === 'ERROR' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' :
+            level === 'WARN' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200' :
+            level === 'INFO' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' :
+            'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200'
+          }`}
+        >
+          {level}
+        </span>
+      ),
+      width: '80px',
+    },
+    {
+      key: 'message',
+      label: 'Message',
+      render: (message: string) => (
+        <span className="font-mono text-sm">{message}</span>
+      ),
+    },
+    {
+      key: 'user_email',
+      label: 'User',
+      render: (email: string) => email || '-',
+      width: '150px',
+    },
+    {
+      key: 'endpoint',
+      label: 'Endpoint',
+      render: (endpoint: string) => (
+        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+          {endpoint || '-'}
+        </code>
+      ),
+      width: '120px',
+    },
+    {
+      key: 'ip_address',
+      label: 'IP Address',
+      render: (ip: string) => (
+        <code className="text-xs">{ip || '-'}</code>
+      ),
+      width: '120px',
+    },
+  ];
+
+  const filteredLogs = selectedLevel === 'ALL' 
+    ? logs 
+    : logs.filter(log => log.level === selectedLevel);
+
+  if (!canViewLogs(user)) {
+    return (
+      <div className="p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-neutral-600">You don't have permission to view system logs.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">System Logs</h1>
+          <p className="text-neutral-600">
+            Monitor system activity and troubleshoot issues
+          </p>
+        </div>
+        <Button className="flex items-center gap-2" variant="secondary">
+          <Download size={16} />
+          Export Logs
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="card p-4 mb-6">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium mb-1">Log Level</label>
+            <select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              className="input w-32"
+            >
+              <option value="ALL">All Levels</option>
+              <option value="ERROR">Error</option>
+              <option value="WARN">Warning</option>
+              <option value="INFO">Info</option>
+              <option value="DEBUG">Debug</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Date</label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="input w-40"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">End Date</label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="input w-40"
+            />
+          </div>
+          
+          <Button className="flex items-center gap-2" variant="secondary">
+            <Filter size={16} />
+            Apply Filters
+          </Button>
+        </div>
+      </div>
+
+      <DataTable
+        data={filteredLogs}
+        columns={columns}
+        loading={loading}
+        searchable
+        searchPlaceholder="Search logs..."
+        emptyMessage="No logs found for the selected criteria"
+        className="font-mono text-sm"
+      />
+    </div>
+  );
+}

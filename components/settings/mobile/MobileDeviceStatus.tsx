@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { schoolService } from '@/services/schools'
+import { schoolService } from '@/qservices/schools'
 import { 
   Smartphone, 
   CheckCircle, 
