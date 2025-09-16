@@ -7,9 +7,9 @@ import { intentConfigService, IntentConfigVersion } from "@/services/intentConfi
 import { RefreshCw, AlertCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import ConfigurationOverview from "./components/ConfigurationOverview";
-import ConfigurationTabs from "./components/ConfigurationTabs";
-import SystemHealthAlert from "./components/SystemHealthAlert";
+import ConfigurationOverview from "@/components/admin/configuration/ConfigurationOverview";
+import ConfigurationTabs from "@/components/admin/configuration/ConfigurationTabs";
+import SystemHealthAlert from "@/components/admin/configuration/SystemHealthAlert";
 
 interface ConfigOverview {
   activeVersion: IntentConfigVersion | null;
@@ -72,7 +72,12 @@ export default function ConfigurationPage() {
     }
   };
 
-  if (!canManageIntentConfig(user)) {
+  // Check permissions directly instead of using canManageIntentConfig to avoid type issues
+  const hasIntentConfigPermission = user?.permissions?.can_manage_intent_config || 
+                                   user?.permissions?.is_admin || 
+                                   user?.permissions?.is_super_admin;
+
+  if (!hasIntentConfigPermission) {
     return (
       <div className="p-4 sm:p-6">
         <div className="text-center">
@@ -100,8 +105,7 @@ export default function ConfigurationPage() {
         <div className="flex gap-2">
           <Button 
             onClick={handleReloadCache}
-            className="flex items-center gap-2 text-sm"
-            variant="secondary"
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
             <RefreshCw size={16} />
             <span className="hidden sm:inline">Reload Cache</span>

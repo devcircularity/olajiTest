@@ -237,9 +237,7 @@ export function PatternSuggestions({ intent, handler, onSelectPattern }: Pattern
               
               <Button
                 onClick={() => handleCopyPattern(suggestion.pattern)}
-                size="sm"
-                variant="secondary"
-                className="w-full flex items-center justify-center gap-2"
+                className="btn-sm btn-secondary w-full flex items-center justify-center gap-2"
               >
                 {copiedPattern === suggestion.pattern ? (
                   <>

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { canAccessTesterQueue } from "@/utils/permissions";
 import WorkspaceSidebar from "@/components/layout/WorkspaceSidebar";
 
 export default function TesterLayout({ children }: { children: React.ReactNode }) {
@@ -37,8 +36,15 @@ export default function TesterLayout({ children }: { children: React.ReactNode }
       return;
     }
 
-    // Check if user has tester permissions
-    if (!canAccessTesterQueue(user)) {
+    // Check if user has tester permissions directly instead of using canAccessTesterQueue to avoid type issues
+    const hasTesterPermission = user.permissions?.is_tester || 
+                               user.permissions?.is_admin || 
+                               user.permissions?.is_super_admin ||
+                               user.roles?.includes("TESTER") ||
+                               user.roles?.includes("ADMIN") ||
+                               user.roles?.includes("SUPER_ADMIN");
+
+    if (!hasTesterPermission) {
       console.log("🔍 User lacks tester permissions, redirecting...", {
         userRoles: user.roles,
         userPermissions: user.permissions,
@@ -71,8 +77,16 @@ export default function TesterLayout({ children }: { children: React.ReactNode }
     return null;
   }
   
+  // Check permissions again for render guard
+  const hasTesterPermission = user.permissions?.is_tester || 
+                             user.permissions?.is_admin || 
+                             user.permissions?.is_super_admin ||
+                             user.roles?.includes("TESTER") ||
+                             user.roles?.includes("ADMIN") ||
+                             user.roles?.includes("SUPER_ADMIN");
+  
   // Don't render anything while redirecting non-tester users
-  if (!canAccessTesterQueue(user)) {
+  if (!hasTesterPermission) {
     return null;
   }
   

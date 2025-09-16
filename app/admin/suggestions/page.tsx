@@ -2,24 +2,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { canAccessTesterQueue } from "@/utils/permissions";
-import { suggestionsService, Suggestion, SuggestionStats } from "@/services/suggestions";
+import { suggestionsService, Suggestion, SuggestionStats, ActionItem } from "@/services/suggestions";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import { Check, X, Eye, MessageSquare, TrendingUp, AlertCircle, CheckCircle, Clock, Lightbulb, Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { EnhancedSuggestionModal } from "./EnhancedSuggestionModal";
-
-interface ActionItem {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  implementation_type: 'pattern' | 'template' | 'code_fix' | 'documentation' | 'other';
-  assigned_to?: string;
-  due_date?: string;
-  created_at: string;
-}
 
 interface EnhancedSuggestion extends Suggestion {
   action_items?: ActionItem[];
@@ -119,12 +106,19 @@ export default function SuggestionsPage() {
     {
       key: 'created_at',
       label: 'Submitted',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => (
+        <span className="text-xs sm:text-sm">
+          {new Date(date).toLocaleDateString()}
+        </span>
+      ),
       width: '100px',
     },
     {
       key: 'created_by_name',
       label: 'Submitted By',
+      render: (name: string) => (
+        <span className="text-xs sm:text-sm truncate">{name}</span>
+      ),
       width: '150px',
     },
     {
@@ -149,7 +143,7 @@ export default function SuggestionsPage() {
       label: 'Title',
       render: (title: string, suggestion: EnhancedSuggestion) => (
         <div className="max-w-xs">
-          <div className="truncate font-medium" title={title}>
+          <div className="truncate font-medium text-xs sm:text-sm" title={title}>
             {title}
           </div>
           {suggestion.action_items && suggestion.action_items.length > 0 && (
@@ -239,11 +233,16 @@ export default function SuggestionsPage() {
     },
   ];
 
-  if (!canAccessTesterQueue(user)) {
+  // Check permissions directly instead of using canAccessTesterQueue to avoid type issues
+  const hasTesterQueuePermission = user?.permissions?.is_tester || 
+                                   user?.permissions?.is_admin || 
+                                   user?.permissions?.is_super_admin;
+
+  if (!hasTesterQueuePermission) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Access Denied</h1>
           <p className="text-neutral-600">You don't have permission to access the tester queue.</p>
         </div>
       </div>
@@ -251,25 +250,26 @@ export default function SuggestionsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Tester Suggestions</h1>
-          <p className="text-neutral-600">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Tester Suggestions</h1>
+          <p className="text-sm sm:text-base text-neutral-600">
             Review suggestions and create action items for implementation
           </p>
         </div>
       </div>
 
-      {/* Enhanced Info Card */}
-      <div className="card p-4 mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <div className="flex items-start gap-3">
-          <Lightbulb className="text-blue-600 mt-1" size={20} />
+      {/* Enhanced Info Card - Mobile responsive */}
+      <div className="card p-3 sm:p-4 mb-4 sm:mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <Lightbulb className="text-blue-600 mt-1 flex-shrink-0" size={16} />
           <div>
-            <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
+            <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 text-sm sm:text-base">
               Enhanced Suggestion Workflow
             </h3>
-            <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 space-y-1">
               <p>• <strong>Review:</strong> Analyze suggestions and determine what needs to be done</p>
               <p>• <strong>Create Action Items:</strong> Break down implementation into specific tasks</p>
               <p>• <strong>Track Progress:</strong> Monitor completion of action items</p>
@@ -279,46 +279,46 @@ export default function SuggestionsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Mobile responsive */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Total</h3>
-            <p className="text-2xl font-bold">{stats.total_suggestions}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Total</h3>
+            <p className="text-lg sm:text-2xl font-bold">{stats.total_suggestions}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Pending</h3>
-            <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Pending</h3>
+            <p className="text-lg sm:text-2xl font-bold text-orange-600">{stats.pending}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Approved</h3>
-            <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Approved</h3>
+            <p className="text-lg sm:text-2xl font-bold text-green-600">{stats.approved}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Need Analysis</h3>
-            <p className="text-2xl font-bold text-yellow-600">
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Need Analysis</h3>
+            <p className="text-lg sm:text-2xl font-bold text-yellow-600">
               {stats.needs_analysis || 0}
             </p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Rejected</h3>
-            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Rejected</h3>
+            <p className="text-lg sm:text-2xl font-bold text-red-600">{stats.rejected}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Addressed</h3>
-            <p className="text-2xl font-bold text-purple-600">{stats.implemented}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Addressed</h3>
+            <p className="text-lg sm:text-2xl font-bold text-purple-600">{stats.implemented}</p>
           </div>
         </div>
       )}
 
-      {/* Status Filter */}
-      <div className="card p-4 mb-6">
-        <div className="flex gap-4 items-center">
-          <label className="text-sm font-medium">Filter by Status:</label>
+      {/* Status Filter - Mobile responsive */}
+      <div className="card p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+          <label className="text-xs sm:text-sm font-medium">Filter by Status:</label>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="input w-48"
+            className="input w-full sm:w-48 text-sm"
           >
             <option value="pending">Pending Review</option>
             <option value="needs_analysis">Needs Analysis</option>
@@ -330,20 +330,24 @@ export default function SuggestionsPage() {
         </div>
       </div>
 
-      <DataTable
-        data={suggestions}
-        columns={columns}
-        actions={actions}
-        loading={loading}
-        searchable
-        searchPlaceholder="Search suggestions..."
-        pagination={{
-          currentPage: pagination.currentPage,
-          totalPages: pagination.totalPages,
-          onPageChange: loadSuggestions,
-        }}
-        emptyMessage="No suggestions found"
-      />
+      {/* Data Table with mobile responsive wrapper */}
+      <div className="overflow-x-auto">
+        <DataTable
+          data={suggestions}
+          columns={columns}
+          actions={actions}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search suggestions..."
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            onPageChange: loadSuggestions,
+          }}
+          emptyMessage="No suggestions found"
+          className="text-xs sm:text-sm"
+        />
+      </div>
 
       {/* Enhanced Suggestion Detail Modal */}
       {selectedSuggestion && (

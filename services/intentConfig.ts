@@ -1,4 +1,4 @@
-// services/intentConfig.ts - Updated with phrase support
+// services/intentConfig.ts - Updated with phrase support and missing methods
 import { apiClient } from './api';
 
 export interface IntentConfigVersion {
@@ -177,6 +177,32 @@ export interface ImprovePatternResponse {
   };
 }
 
+// NEW: Validation interfaces
+export interface ValidationResult {
+  overall_valid: boolean;
+  patterns?: {
+    total: number;
+    valid: number;
+    invalid: number;
+    errors?: Array<{
+      intent: string;
+      error: string;
+      pattern: string;
+    }>;
+  };
+  templates?: {
+    total: number;
+    valid: number;
+    invalid: number;
+    errors?: Array<{
+      intent: string;
+      error: string;
+      template: string;
+    }>;
+  };
+  error?: string;
+}
+
 class IntentConfigService {
   // CONFIGURATION OVERVIEW AND MANAGEMENT
   async getConfigurationOverview(): Promise<ConfigurationOverview> {
@@ -286,12 +312,6 @@ class IntentConfigService {
     return response.data;
   }
 
-  // NEW: Generate regex from phrases
-  async generateRegexFromPhrases(data: GenerateRegexRequest): Promise<GenerateRegexResponse> {
-    const response = await apiClient.post('/api/admin/intent-config/generate-regex', data);
-    return response.data;
-  }
-
   // Legacy pattern test (for backward compatibility)
   async testPattern(patternId: string, testMessage: string): Promise<{
     pattern_id: string;
@@ -376,10 +396,10 @@ class IntentConfigService {
   }
 
   async getAvailableIntents(handler?: string): Promise<{ intents: string[] }> {
-  const params = handler ? `?handler=${handler}` : '';
-  const response = await apiClient.get(`/api/admin/intent-config/intents${params}`);
-  return response.data;
-}
+    const params = handler ? `?handler=${handler}` : '';
+    const response = await apiClient.get(`/api/admin/intent-config/intents${params}`);
+    return response.data;
+  }
 
   async getPatternKinds(): Promise<{ kinds: Array<{ value: string; label: string }> }> {
     const response = await apiClient.get('/api/admin/intent-config/pattern-kinds');
@@ -391,8 +411,7 @@ class IntentConfigService {
     return response.data;
   }
 
-
-    // NEW: Generate regex from phrases - FIXED VERSION
+  // NEW: Generate regex from phrases
   async generateRegexFromPhrases(data: GenerateRegexRequest): Promise<GenerateRegexResponse> {
     console.log('🔍 Sending regex generation request:', data);
     
@@ -419,6 +438,23 @@ class IntentConfigService {
       console.error('❌ Regex generation API error:', error);
       throw error;
     }
+  }
+
+  // NEW: Export configuration
+  async exportConfiguration(versionId: string, format: 'json' | 'yaml'): Promise<Blob> {
+    const response = await apiClient.get(
+      `/api/admin/intent-config/versions/${versionId}/export?format=${format}`,
+      { responseType: 'blob' }
+    );
+    return response.data;
+  }
+
+  // NEW: Validate configuration
+  async validateConfiguration(versionId: string): Promise<ValidationResult> {
+    const response = await apiClient.post(
+      `/api/admin/intent-config/versions/${versionId}/validate`
+    );
+    return response.data;
   }
 }
 

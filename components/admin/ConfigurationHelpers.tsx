@@ -48,7 +48,7 @@ export function PatternTester({ patternId, pattern }: PatternTesterProps) {
           <Button 
             onClick={handleTest}
             disabled={testing || !testMessage.trim()}
-            size="sm"
+            className="btn-sm"
           >
             <TestTube size={14} />
             {testing ? 'Testing...' : 'Test'}
@@ -195,9 +195,7 @@ export function ExportConfiguration({ versionId, versionName }: ExportConfigurat
       <Button
         onClick={() => handleExport('json')}
         disabled={exporting}
-        variant="secondary"
-        size="sm"
-        className="flex items-center gap-2"
+        className="btn-secondary btn-sm flex items-center gap-2"
       >
         <Download size={14} />
         Export JSON
@@ -205,9 +203,7 @@ export function ExportConfiguration({ versionId, versionName }: ExportConfigurat
       <Button
         onClick={() => handleExport('yaml')}
         disabled={exporting}
-        variant="secondary"
-        size="sm"
-        className="flex items-center gap-2"
+        className="btn-secondary btn-sm flex items-center gap-2"
       >
         <Download size={14} />
         Export YAML
@@ -246,8 +242,7 @@ export function ConfigValidator({ versionId, versionName }: ConfigValidatorProps
       <Button
         onClick={handleValidate}
         disabled={validating}
-        variant="secondary"
-        className="flex items-center gap-2"
+        className="btn-secondary flex items-center gap-2"
       >
         <CheckCircle size={16} />
         {validating ? 'Validating...' : 'Validate Configuration'}

@@ -2,7 +2,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { canManageIntentConfig } from "@/utils/permissions";
 import { intentConfigService, IntentConfigVersion, IntentPattern, PromptTemplate } from "@/services/intentConfig";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import { Edit, Plus, Save, X, Play, Archive, RefreshCw, TestTube } from "lucide-react";
@@ -171,7 +170,7 @@ export default function IntentConfigPage() {
       key: 'handler',
       label: 'Handler',
       render: (handler: string) => (
-        <code className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+        <code className="text-xs sm:text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
           {handler}
         </code>
       ),
@@ -237,11 +236,16 @@ export default function IntentConfigPage() {
     },
   ];
 
-  if (!canManageIntentConfig(user)) {
+  // Check permissions directly instead of using canManageIntentConfig to avoid type issues
+  const hasIntentConfigPermission = user?.permissions?.can_manage_intent_config || 
+                                   user?.permissions?.is_admin || 
+                                   user?.permissions?.is_super_admin;
+
+  if (!hasIntentConfigPermission) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Access Denied</h1>
           <p className="text-neutral-600">You don't have permission to manage intent configuration.</p>
         </div>
       </div>
@@ -249,41 +253,43 @@ export default function IntentConfigPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Intent Configuration</h1>
-          <p className="text-neutral-600">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Intent Configuration</h1>
+          <p className="text-sm sm:text-base text-neutral-600">
             Manage AI intent patterns and response templates
           </p>
         </div>
         <div className="flex gap-2">
           <Button 
             onClick={handleReloadConfig}
-            className="flex items-center gap-2"
-            variant="secondary"
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
             <RefreshCw size={16} />
-            Reload Cache
+            <span className="hidden sm:inline">Reload Cache</span>
+            <span className="sm:hidden">Reload</span>
           </Button>
           <Button 
             onClick={() => setShowCreateVersion(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-sm"
           >
             <Plus size={16} />
-            New Version
+            <span className="hidden sm:inline">New Version</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6">
-        <nav className="flex space-x-8">
+      {/* Tabs - Mobile responsive */}
+      <div className="border-b border-neutral-200 dark:border-neutral-700 mb-4 sm:mb-6">
+        <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto">
           {['versions', 'patterns', 'templates', 'logs', 'test'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-[--color-brand] text-[--color-brand]'
                   : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -297,16 +303,19 @@ export default function IntentConfigPage() {
 
       {/* Selected Version Info */}
       {selectedVersion && activeTab !== 'versions' && (
-        <div className="card p-4 mb-6">
-          <div className="flex justify-between items-center">
+        <div className="card p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h3 className="font-semibold">Working with: {selectedVersion.name}</h3>
-              <p className="text-sm text-neutral-600">
+              <h3 className="font-semibold text-sm sm:text-base">Working with: {selectedVersion.name}</h3>
+              <p className="text-xs sm:text-sm text-neutral-600">
                 Status: {selectedVersion.status} | 
                 {selectedVersion.pattern_count} patterns, {selectedVersion.template_count} templates
               </p>
             </div>
-            <Button onClick={() => setActiveTab('versions')} variant="secondary">
+            <Button 
+              onClick={() => setActiveTab('versions')} 
+              className="btn-secondary text-sm"
+            >
               Change Version
             </Button>
           </div>
@@ -328,11 +337,11 @@ export default function IntentConfigPage() {
 
       {activeTab === 'patterns' && selectedVersion && (
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Patterns</h3>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+            <h3 className="text-base sm:text-lg font-semibold">Patterns</h3>
             <Button 
               onClick={() => setShowCreatePattern(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm"
             >
               <Plus size={16} />
               Add Pattern
@@ -352,11 +361,11 @@ export default function IntentConfigPage() {
 
       {activeTab === 'templates' && selectedVersion && (
         <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Templates</h3>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+            <h3 className="text-base sm:text-lg font-semibold">Templates</h3>
             <Button 
               onClick={() => setShowCreateTemplate(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm"
             >
               <Plus size={16} />
               Add Template
@@ -369,7 +378,7 @@ export default function IntentConfigPage() {
                 key: 'handler',
                 label: 'Handler',
                 render: (handler: string) => (
-                  <code className="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                  <code className="text-xs sm:text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                     {handler}
                   </code>
                 ),
@@ -392,7 +401,7 @@ export default function IntentConfigPage() {
                 key: 'template_text',
                 label: 'Template',
                 render: (text: string) => (
-                  <div className="max-w-md truncate text-sm">{text}</div>
+                  <div className="max-w-xs sm:max-w-md truncate text-xs sm:text-sm">{text}</div>
                 ),
               },
               {
@@ -433,12 +442,15 @@ export default function IntentConfigPage() {
       )}
 
       {activeTab === 'logs' && (
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Routing Logs</h3>
-          <p className="text-neutral-600 mb-4">
+        <div className="card p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Routing Logs</h3>
+          <p className="text-sm sm:text-base text-neutral-600 mb-3 sm:mb-4">
             View routing logs and analytics in the Logs section.
           </p>
-          <Button onClick={() => window.location.href = '/admin/logs'}>
+          <Button 
+            onClick={() => window.location.href = '/admin/logs'}
+            className="text-sm"
+          >
             View Logs
           </Button>
         </div>
@@ -446,7 +458,7 @@ export default function IntentConfigPage() {
 
       {activeTab === 'test' && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Test Classification</h3>
+          <h3 className="text-base sm:text-lg font-semibold mb-4">Test Classification</h3>
           <TestClassificationPanel />
         </div>
       )}
@@ -481,19 +493,19 @@ function TestClassificationPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <label className="label">Test Message</label>
-        <div className="flex gap-2">
+        <label className="label text-sm">Test Message</label>
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={testMessage}
             onChange={(e) => setTestMessage(e.target.value)}
             placeholder="Enter a message to test classification..."
-            className="input flex-1"
+            className="input flex-1 text-sm"
           />
           <Button 
             onClick={handleTest}
             disabled={testing || !testMessage.trim()}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-sm"
           >
             <TestTube size={16} />
             {testing ? 'Testing...' : 'Test'}
@@ -502,20 +514,20 @@ function TestClassificationPanel() {
       </div>
 
       {testResult && (
-        <div className="card p-4">
-          <h4 className="font-semibold mb-3">Classification Result</h4>
+        <div className="card p-3 sm:p-4">
+          <h4 className="font-semibold mb-3 text-sm sm:text-base">Classification Result</h4>
           <div className="space-y-3">
             <div>
-              <strong>Final Decision:</strong>
-              <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-auto">
+              <strong className="text-sm">Final Decision:</strong>
+              <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs sm:text-sm overflow-auto">
                 {JSON.stringify(testResult.final_decision, null, 2)}
               </pre>
             </div>
             
             {testResult.config_router_result && (
               <div>
-                <strong>Config Router:</strong>
-                <pre className="mt-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm overflow-auto">
+                <strong className="text-sm">Config Router:</strong>
+                <pre className="mt-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs sm:text-sm overflow-auto">
                   {JSON.stringify(testResult.config_router_result, null, 2)}
                 </pre>
               </div>
@@ -523,18 +535,18 @@ function TestClassificationPanel() {
             
             {testResult.llm_classifier_result && (
               <div>
-                <strong>LLM Classifier:</strong>
-                <pre className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm overflow-auto">
+                <strong className="text-sm">LLM Classifier:</strong>
+                <pre className="mt-1 p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs sm:text-sm overflow-auto">
                   {JSON.stringify(testResult.llm_classifier_result, null, 2)}
                 </pre>
               </div>
             )}
             
             <div>
-              <strong>Processing Steps:</strong>
+              <strong className="text-sm">Processing Steps:</strong>
               <ul className="mt-1 space-y-1">
                 {testResult.processing_steps.map((step: string, index: number) => (
-                  <li key={index} className="text-sm text-neutral-600">
+                  <li key={index} className="text-xs sm:text-sm text-neutral-600">
                     {index + 1}. {step}
                   </li>
                 ))}

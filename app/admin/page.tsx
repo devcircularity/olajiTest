@@ -106,7 +106,7 @@ function AdminDashboard() {
               <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 mb-3 sm:mb-4">
                 Review and approve tester suggestions.
               </p>
-              {user && canAccessTesterQueue(user) ? (
+              {(user?.permissions?.is_tester || user?.permissions?.is_admin || user?.permissions?.is_super_admin) ? (
                 <button className="btn-primary w-full sm:w-auto">
                   Review Suggestions
                 </button>

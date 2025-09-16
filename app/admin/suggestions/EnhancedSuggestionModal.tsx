@@ -2,19 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Plus, Calendar, User, AlertCircle, CheckCircle, Clock, Lightbulb } from 'lucide-react';
 import Button from '@/components/ui/Button';
-
-interface ActionItem {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  implementation_type: 'pattern' | 'template' | 'code_fix' | 'documentation' | 'other';
-  assigned_to?: string;
-  due_date?: string;
-  created_at: string;
-  completion_notes?: string;
-}
+import { Suggestion, ActionItem } from '@/services/suggestions';
 
 interface EnhancedSuggestion extends Suggestion {
   action_items?: ActionItem[];
@@ -131,15 +119,15 @@ export function EnhancedSuggestionModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-xl font-bold">{suggestion.title}</h2>
-              <p className="text-sm text-neutral-600 mt-1">
+        <div className="p-4 sm:p-6">
+          {/* Header - Mobile responsive */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 sm:mb-6 gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold break-words">{suggestion.title}</h2>
+              <p className="text-xs sm:text-sm text-neutral-600 mt-1">
                 Submitted by {suggestion.created_by_name} on {new Date(suggestion.created_at).toLocaleDateString()}
               </p>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(suggestion.priority)}`}>
                   {suggestion.priority}
                 </span>
@@ -148,19 +136,19 @@ export function EnhancedSuggestionModal({
                 </span>
               </div>
             </div>
-            <Button onClick={onClose} variant="secondary" className="text-neutral-500">
+            <Button onClick={onClose} className="btn-secondary text-neutral-500 flex-shrink-0">
               <X size={16} />
             </Button>
           </div>
 
-          {/* Tabs */}
-          <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6">
-            <nav className="flex space-x-8">
+          {/* Tabs - Mobile responsive */}
+          <div className="border-b border-neutral-200 dark:border-neutral-700 mb-4 sm:mb-6">
+            <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto">
               {['details', 'analysis', 'actions'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${
+                  className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm capitalize whitespace-nowrap ${
                     activeTab === tab
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-neutral-500 hover:text-neutral-700'
@@ -173,29 +161,29 @@ export function EnhancedSuggestionModal({
           </div>
 
           {/* Tab Content */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Details Tab */}
             {activeTab === 'details' && (
               <>
                 {/* Description */}
                 <div>
-                  <h3 className="font-semibold mb-2">Description</h3>
-                  <div className="p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                  <h3 className="font-semibold mb-2 text-sm sm:text-base">Description</h3>
+                  <div className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg text-sm">
                     {suggestion.description}
                   </div>
                 </div>
 
-                {/* Handler and Intent */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Handler and Intent - Responsive grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <h3 className="font-semibold mb-2">Handler</h3>
-                    <code className="p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Handler</h3>
+                    <code className="p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs sm:text-sm block break-all">
                       {suggestion.handler}
                     </code>
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2">Intent</h3>
-                    <code className="p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Intent</h3>
+                    <code className="p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs sm:text-sm block break-all">
                       {suggestion.intent}
                     </code>
                   </div>
@@ -204,9 +192,9 @@ export function EnhancedSuggestionModal({
                 {/* Proposed Solution */}
                 {suggestion.pattern && (
                   <div>
-                    <h3 className="font-semibold mb-2">Proposed Pattern</h3>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
-                      <code className="text-sm">{suggestion.pattern}</code>
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Proposed Pattern</h3>
+                    <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                      <code className="text-xs sm:text-sm break-all">{suggestion.pattern}</code>
                     </div>
                     <p className="text-xs text-neutral-500 mt-2">
                       Note: This is a suggested pattern that may need refinement
@@ -216,9 +204,9 @@ export function EnhancedSuggestionModal({
 
                 {suggestion.template_text && (
                   <div>
-                    <h3 className="font-semibold mb-2">Proposed Template</h3>
-                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
-                      {suggestion.template_text}
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Proposed Template</h3>
+                    <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
+                      <div className="text-xs sm:text-sm whitespace-pre-wrap">{suggestion.template_text}</div>
                     </div>
                     <p className="text-xs text-neutral-500 mt-2">
                       Note: This is a suggested template that may need refinement
@@ -229,9 +217,9 @@ export function EnhancedSuggestionModal({
                 {/* Tester's Note */}
                 {suggestion.tester_note && (
                   <div>
-                    <h3 className="font-semibold mb-2">Tester's Note</h3>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
-                      {suggestion.tester_note}
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Tester's Note</h3>
+                    <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                      <div className="text-xs sm:text-sm">{suggestion.tester_note}</div>
                     </div>
                   </div>
                 )}
@@ -239,18 +227,18 @@ export function EnhancedSuggestionModal({
                 {/* Context */}
                 {suggestion.original_message && (
                   <div>
-                    <h3 className="font-semibold mb-2">Original User Message</h3>
-                    <div className="p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
-                      "{suggestion.original_message}"
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Original User Message</h3>
+                    <div className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                      <div className="text-xs sm:text-sm">"{suggestion.original_message}"</div>
                     </div>
                   </div>
                 )}
 
                 {suggestion.assistant_response && (
                   <div>
-                    <h3 className="font-semibold mb-2">Current AI Response</h3>
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200">
-                      {suggestion.assistant_response}
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Current AI Response</h3>
+                    <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200">
+                      <div className="text-xs sm:text-sm whitespace-pre-wrap">{suggestion.assistant_response}</div>
                     </div>
                   </div>
                 )}
@@ -260,14 +248,14 @@ export function EnhancedSuggestionModal({
             {/* Analysis Tab */}
             {activeTab === 'analysis' && (
               <>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded-lg p-4">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded-lg p-3 sm:p-4">
                   <div className="flex items-start gap-2">
-                    <Lightbulb className="text-yellow-600 mt-0.5" size={16} />
+                    <Lightbulb className="text-yellow-600 mt-0.5 flex-shrink-0" size={16} />
                     <div>
-                      <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                      <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 text-sm sm:text-base">
                         Admin Analysis Required
                       </h3>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                      <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
                         Please analyze this suggestion and determine the appropriate action items needed for implementation.
                       </p>
                     </div>
@@ -275,32 +263,32 @@ export function EnhancedSuggestionModal({
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Admin Analysis</h3>
+                  <h3 className="font-semibold mb-2 text-sm sm:text-base">Admin Analysis</h3>
                   <textarea
                     value={adminAnalysis}
                     onChange={(e) => setAdminAnalysis(e.target.value)}
                     placeholder="Analyze what this suggestion is asking for and what needs to be done to address it..."
-                    className="w-full p-4 border border-neutral-200 rounded-lg min-h-[120px]"
+                    className="w-full p-3 sm:p-4 border border-neutral-200 rounded-lg min-h-[120px] text-xs sm:text-sm"
                     disabled={!reviewMode && suggestion.status !== 'pending'}
                   />
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Implementation Notes</h3>
+                  <h3 className="font-semibold mb-2 text-sm sm:text-base">Implementation Notes</h3>
                   <textarea
                     value={implementationNotes}
                     onChange={(e) => setImplementationNotes(e.target.value)}
                     placeholder="Specific notes on how to implement this suggestion (e.g., 'Create a pattern for class count queries', 'Update error handling template')..."
-                    className="w-full p-4 border border-neutral-200 rounded-lg min-h-[100px]"
+                    className="w-full p-3 sm:p-4 border border-neutral-200 rounded-lg min-h-[100px] text-xs sm:text-sm"
                     disabled={!reviewMode && suggestion.status !== 'pending'}
                   />
                 </div>
 
                 {suggestion.tester_note && (
                   <div>
-                    <h3 className="font-semibold mb-2">Tester Note</h3>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      {suggestion.tester_note}
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Tester Note</h3>
+                    <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="text-xs sm:text-sm">{suggestion.tester_note}</div>
                     </div>
                   </div>
                 )}
@@ -310,13 +298,12 @@ export function EnhancedSuggestionModal({
             {/* Actions Tab */}
             {activeTab === 'actions' && (
               <>
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">Action Items</h3>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <h3 className="font-semibold text-sm sm:text-base">Action Items</h3>
                   {suggestion.status === 'approved' && (
                     <Button
                       onClick={() => setShowAddAction(true)}
-                      variant="secondary"
-                      className="flex items-center gap-2"
+                      className="btn-secondary flex items-center gap-2 text-sm"
                     >
                       <Plus size={14} />
                       Add Action Item
@@ -328,10 +315,10 @@ export function EnhancedSuggestionModal({
                 {actionItems.length > 0 ? (
                   <div className="space-y-3">
                     {actionItems.map((item) => (
-                      <div key={item.id} className="border border-neutral-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <div className="flex gap-2">
+                      <div key={item.id} className="border border-neutral-200 rounded-lg p-3 sm:p-4">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2">
+                          <h4 className="font-medium text-sm sm:text-base">{item.title}</h4>
+                          <div className="flex flex-wrap gap-2">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.priority)}`}>
                               {item.priority}
                             </span>
@@ -340,8 +327,8 @@ export function EnhancedSuggestionModal({
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-neutral-600 mb-2">{item.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-neutral-500">
+                        <p className="text-xs sm:text-sm text-neutral-600 mb-2">{item.description}</p>
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-neutral-500">
                           <span className="flex items-center gap-1">
                             <Clock size={12} />
                             Created {new Date(item.created_at).toLocaleDateString()}
@@ -364,47 +351,47 @@ export function EnhancedSuggestionModal({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-neutral-500">
+                  <div className="text-center py-6 sm:py-8 text-neutral-500">
                     <AlertCircle size={24} className="mx-auto mb-2 opacity-50" />
-                    <p>No action items created yet</p>
+                    <p className="text-sm">No action items created yet</p>
                     {suggestion.status === 'approved' && (
-                      <p className="text-sm">Create action items to track implementation progress</p>
+                      <p className="text-xs mt-1">Create action items to track implementation progress</p>
                     )}
                   </div>
                 )}
 
                 {/* Add Action Item Form */}
                 {showAddAction && (
-                  <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
-                    <h4 className="font-medium mb-4">Create Action Item</h4>
-                    <div className="space-y-4">
+                  <div className="border border-neutral-200 rounded-lg p-3 sm:p-4 bg-neutral-50">
+                    <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Create Action Item</h4>
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1">Title</label>
+                        <label className="block text-xs sm:text-sm font-medium mb-1">Title</label>
                         <input
                           type="text"
                           value={newActionItem.title}
                           onChange={(e) => setNewActionItem({...newActionItem, title: e.target.value})}
                           placeholder="e.g., Create pattern for class count queries"
-                          className="w-full p-2 border border-neutral-200 rounded"
+                          className="w-full p-2 border border-neutral-200 rounded text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Description</label>
+                        <label className="block text-xs sm:text-sm font-medium mb-1">Description</label>
                         <textarea
                           value={newActionItem.description}
                           onChange={(e) => setNewActionItem({...newActionItem, description: e.target.value})}
                           placeholder="Detailed description of what needs to be done..."
-                          className="w-full p-2 border border-neutral-200 rounded"
+                          className="w-full p-2 border border-neutral-200 rounded text-sm"
                           rows={3}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1">Priority</label>
+                          <label className="block text-xs sm:text-sm font-medium mb-1">Priority</label>
                           <select
                             value={newActionItem.priority}
                             onChange={(e) => setNewActionItem({...newActionItem, priority: e.target.value as any})}
-                            className="w-full p-2 border border-neutral-200 rounded"
+                            className="w-full p-2 border border-neutral-200 rounded text-sm"
                           >
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
@@ -413,11 +400,11 @@ export function EnhancedSuggestionModal({
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1">Type</label>
+                          <label className="block text-xs sm:text-sm font-medium mb-1">Type</label>
                           <select
                             value={newActionItem.implementation_type}
                             onChange={(e) => setNewActionItem({...newActionItem, implementation_type: e.target.value as any})}
-                            className="w-full p-2 border border-neutral-200 rounded"
+                            className="w-full p-2 border border-neutral-200 rounded text-sm"
                           >
                             <option value="pattern">Create Pattern</option>
                             <option value="template">Create Template</option>
@@ -428,19 +415,19 @@ export function EnhancedSuggestionModal({
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Due Date (Optional)</label>
+                        <label className="block text-xs sm:text-sm font-medium mb-1">Due Date (Optional)</label>
                         <input
                           type="date"
                           value={newActionItem.due_date}
                           onChange={(e) => setNewActionItem({...newActionItem, due_date: e.target.value})}
-                          className="w-full p-2 border border-neutral-200 rounded"
+                          className="w-full p-2 border border-neutral-200 rounded text-sm"
                         />
                       </div>
-                      <div className="flex gap-2">
-                        <Button onClick={handleAddActionItem} className="flex-1">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={handleAddActionItem} className="flex-1 text-sm">
                           Create Action Item
                         </Button>
-                        <Button onClick={() => setShowAddAction(false)} variant="secondary" className="flex-1">
+                        <Button onClick={() => setShowAddAction(false)} className="btn-secondary flex-1 text-sm">
                           Cancel
                         </Button>
                       </div>
@@ -451,19 +438,19 @@ export function EnhancedSuggestionModal({
                 {/* Mark as Addressed */}
                 {suggestion.status === 'approved' && actionItems.some(item => item.status === 'completed') && (
                   <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3">Mark Suggestion as Addressed</h4>
+                    <h4 className="font-medium mb-3 text-sm sm:text-base">Mark Suggestion as Addressed</h4>
                     <div className="space-y-3">
                       <textarea
                         value={completionNotes}
                         onChange={(e) => setCompletionNotes(e.target.value)}
                         placeholder="Describe how this suggestion was addressed (e.g., 'Created pattern for class count queries in candidate configuration')..."
-                        className="w-full p-3 border border-neutral-200 rounded-lg"
+                        className="w-full p-3 border border-neutral-200 rounded-lg text-sm"
                         rows={3}
                       />
                       <Button
                         onClick={handleMarkAddressed}
                         disabled={!completionNotes.trim()}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 text-sm"
                       >
                         <CheckCircle size={16} />
                         Mark as Addressed
@@ -475,35 +462,35 @@ export function EnhancedSuggestionModal({
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4 pt-6 border-t">
+          {/* Action Buttons - Mobile responsive */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4 sm:pt-6 border-t">
             {suggestion.status === 'pending' && (
               <>
                 {!reviewMode ? (
-                  <Button onClick={() => setReviewMode(true)} className="flex-1">
+                  <Button onClick={() => setReviewMode(true)} className="flex-1 text-sm">
                     Start Review
                   </Button>
                 ) : (
                   <>
                     <Button 
                       onClick={() => handleEnhancedReview('approved')}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 text-sm"
                     >
                       <Check size={16} />
-                      Approve for Action Items
+                      <span className="hidden sm:inline">Approve for Action Items</span>
+                      <span className="sm:hidden">Approve</span>
                     </Button>
                     <Button 
                       onClick={() => handleEnhancedReview('needs_analysis')}
-                      variant="secondary"
-                      className="flex items-center gap-2"
+                      className="btn-secondary flex items-center gap-2 text-sm"
                     >
                       <AlertCircle size={16} />
-                      Needs More Analysis
+                      <span className="hidden sm:inline">Needs More Analysis</span>
+                      <span className="sm:hidden">Needs Analysis</span>
                     </Button>
                     <Button 
                       onClick={() => handleEnhancedReview('rejected')}
-                      variant="danger"
-                      className="flex items-center gap-2"
+                      className="btn-danger flex items-center gap-2 text-sm"
                     >
                       <X size={16} />
                       Reject
@@ -514,15 +501,15 @@ export function EnhancedSuggestionModal({
             )}
 
             {suggestion.status === 'approved' && (
-              <div className="text-sm text-green-600 flex items-center gap-2">
-                <CheckCircle size={16} />
+              <div className="text-xs sm:text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle size={16} className="flex-shrink-0" />
                 Approved - Create action items to track implementation
               </div>
             )}
 
             {suggestion.status === 'implemented' && (
-              <div className="text-sm text-purple-600 flex items-center gap-2">
-                <CheckCircle size={16} />
+              <div className="text-xs sm:text-sm text-purple-600 flex items-center gap-2">
+                <CheckCircle size={16} className="flex-shrink-0" />
                 Suggestion has been addressed
               </div>
             )}

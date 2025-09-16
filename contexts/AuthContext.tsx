@@ -1,22 +1,7 @@
-// contexts/AuthContext.tsx
 'use client'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authService } from '@/services/auth'
-
-// Updated UserInfo type to match your debug info
-export interface UserInfo {
-  email: string;
-  full_name?: string;
-  roles?: string[];
-  permissions?: {
-    can_manage_users?: boolean;
-    is_admin?: boolean;
-    is_super_admin?: boolean;
-    is_tester?: boolean;
-    can_manage_intent_config?: boolean;
-  };
-}
+import { authService, UserInfo } from '@/services/auth'
 
 type AuthState = { 
   token: string | null
@@ -156,3 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthCtx)
+
+// Re-export UserInfo type for consistency
+export type { UserInfo } from '@/services/auth'

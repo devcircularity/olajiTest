@@ -163,7 +163,7 @@ export function PatternBuilder({ initialPattern, onPatternChange, onTest }: Patt
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h4 className="font-medium">Pattern Rules</h4>
-            <Button onClick={addRule} size="sm" className="flex items-center gap-2">
+            <Button onClick={addRule} className="btn-sm flex items-center gap-2">
               <Plus size={14} />
               Add Rule
             </Button>

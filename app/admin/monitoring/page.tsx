@@ -2,7 +2,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { canViewLogs } from "@/utils/permissions";
 import { chatMonitoringService, ChatMessage, RealtimeStats } from "@/services/chatMonitoring";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import { Eye, MessageSquare, TrendingUp, TrendingDown, Clock, Users, AlertTriangle } from "lucide-react";
@@ -68,10 +67,10 @@ export default function ChatMonitoringPage() {
         const now = new Date();
         const diffMinutes = Math.floor((now.getTime() - messageTime.getTime()) / (1000 * 60));
         
-        if (diffMinutes < 1) return 'Just now';
-        if (diffMinutes < 60) return `${diffMinutes}m ago`;
-        if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
-        return messageTime.toLocaleDateString();
+        if (diffMinutes < 1) return <span className="text-xs sm:text-sm">Just now</span>;
+        if (diffMinutes < 60) return <span className="text-xs sm:text-sm">{diffMinutes}m ago</span>;
+        if (diffMinutes < 1440) return <span className="text-xs sm:text-sm">{Math.floor(diffMinutes / 60)}h ago</span>;
+        return <span className="text-xs sm:text-sm">{messageTime.toLocaleDateString()}</span>;
       },
       width: '100px',
     },
@@ -94,7 +93,7 @@ export default function ChatMonitoringPage() {
       key: 'content',
       label: 'Message',
       render: (content: string) => (
-        <div className="max-w-md truncate text-sm" title={content}>
+        <div className="max-w-xs sm:max-w-md truncate text-xs sm:text-sm break-words" title={content}>
           {content}
         </div>
       ),
@@ -103,7 +102,7 @@ export default function ChatMonitoringPage() {
       key: 'intent',
       label: 'Intent',
       render: (intent: string) => intent ? (
-        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all">
           {intent}
         </code>
       ) : '-',
@@ -113,7 +112,7 @@ export default function ChatMonitoringPage() {
       key: 'rating',
       label: 'Rating',
       render: (rating: number, message: ChatMessage) => {
-        if (message.message_type === 'user') return '-';
+        if (message.message_type === 'user') return <span className="text-xs sm:text-sm">-</span>;
         if (rating === 1) return <span className="text-green-600">👍</span>;
         if (rating === -1) return <span className="text-red-600">👎</span>;
         return <span className="text-gray-400">-</span>;
@@ -123,7 +122,11 @@ export default function ChatMonitoringPage() {
     {
       key: 'processing_time_ms',
       label: 'Response Time',
-      render: (time: number) => time ? `${time}ms` : '-',
+      render: (time: number) => (
+        <span className="text-xs sm:text-sm">
+          {time ? `${time}ms` : '-'}
+        </span>
+      ),
       width: '100px',
     },
   ];
@@ -137,11 +140,15 @@ export default function ChatMonitoringPage() {
     },
   ];
 
-  if (!canViewLogs(user)) {
+  // Check permissions directly instead of using canViewLogs to avoid type issues
+  const hasMonitoringPermission = user?.permissions?.is_admin || 
+                                  user?.permissions?.is_super_admin;
+
+  if (!hasMonitoringPermission) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Access Denied</h1>
           <p className="text-neutral-600">You don't have permission to view chat monitoring.</p>
         </div>
       </div>
@@ -149,15 +156,16 @@ export default function ChatMonitoringPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Chat Monitoring</h1>
-          <p className="text-neutral-600">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Chat Monitoring</h1>
+          <p className="text-sm sm:text-base text-neutral-600">
             Real-time monitoring of chat interactions and system performance
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -165,63 +173,66 @@ export default function ChatMonitoringPage() {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded"
             />
-            <span className="text-sm">Auto-refresh</span>
+            <span className="text-xs sm:text-sm">Auto-refresh</span>
           </label>
-          <Button onClick={loadData} variant="secondary">
+          <Button 
+            onClick={loadData} 
+            className="btn-secondary text-sm"
+          >
             Refresh Now
           </Button>
         </div>
       </div>
 
-      {/* Real-time Stats */}
+      {/* Real-time Stats - Mobile responsive grid */}
       {realtimeStats && (
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-          <div className="card p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Users size={16} className="text-blue-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Active Chats</h3>
+              <Users size={14} className="text-blue-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Active Chats</h3>
             </div>
-            <p className="text-2xl font-bold">{realtimeStats.active_conversations}</p>
+            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.active_conversations}</p>
           </div>
           
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <MessageSquare size={16} className="text-green-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Messages Today</h3>
+              <MessageSquare size={14} className="text-green-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Messages Today</h3>
             </div>
-            <p className="text-2xl font-bold">{realtimeStats.messages_today}</p>
+            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.messages_today}</p>
           </div>
           
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Clock size={16} className="text-purple-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Avg Response</h3>
+              <Clock size={14} className="text-purple-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Avg Response</h3>
             </div>
-            <p className="text-2xl font-bold">{realtimeStats.average_response_time}ms</p>
+            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.average_response_time}ms</p>
           </div>
           
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={16} className="text-green-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Satisfaction</h3>
+              <TrendingUp size={14} className="text-green-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Satisfaction</h3>
             </div>
-            <p className="text-2xl font-bold">{(realtimeStats.satisfaction_rate * 100).toFixed(1)}%</p>
+            <p className="text-lg sm:text-2xl font-bold">{(realtimeStats.satisfaction_rate * 100).toFixed(1)}%</p>
           </div>
           
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle size={16} className="text-orange-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Fallback Rate</h3>
+              <AlertTriangle size={14} className="text-orange-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Fallback Rate</h3>
             </div>
-            <p className="text-2xl font-bold">{(realtimeStats.fallback_rate * 100).toFixed(1)}%</p>
+            <p className="text-lg sm:text-2xl font-bold">{(realtimeStats.fallback_rate * 100).toFixed(1)}%</p>
           </div>
           
-          <div className="card p-4">
+          <div className="card p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={16} className="text-blue-600" />
-              <h3 className="text-sm font-medium text-neutral-600">Top Intent</h3>
+              <TrendingUp size={14} className="text-blue-600 flex-shrink-0" />
+              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Top Intent</h3>
             </div>
-            <p className="text-lg font-bold truncate">
+            <p className="text-sm sm:text-lg font-bold truncate">
               {realtimeStats.top_intents_today[0]?.intent || 'N/A'}
             </p>
             <p className="text-xs text-neutral-500">
@@ -232,17 +243,20 @@ export default function ChatMonitoringPage() {
       )}
 
       {/* Recent Messages */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-4">Recent Messages (Last 24 Hours)</h2>
-        <DataTable
-          data={recentMessages}
-          columns={columns}
-          actions={actions}
-          loading={loading}
-          searchable
-          searchPlaceholder="Search messages..."
-          emptyMessage="No recent messages found"
-        />
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Recent Messages (Last 24 Hours)</h2>
+        <div className="overflow-x-auto">
+          <DataTable
+            data={recentMessages}
+            columns={columns}
+            actions={actions}
+            loading={loading}
+            searchable
+            searchPlaceholder="Search messages..."
+            emptyMessage="No recent messages found"
+            className="text-xs sm:text-sm"
+          />
+        </div>
       </div>
 
       {/* Conversation Detail Modal */}
@@ -250,51 +264,58 @@ export default function ChatMonitoringPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedMessage(null)} />
           <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-xl font-bold">Conversation Details</h2>
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 sm:mb-6 gap-3">
+                <h2 className="text-lg sm:text-xl font-bold">Conversation Details</h2>
                 <Button 
                   onClick={() => setSelectedMessage(null)}
-                  variant="secondary"
+                  className="btn-secondary text-sm"
                 >
                   Close
                 </Button>
               </div>
 
-              {/* Message Details */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              {/* Message Details - Mobile responsive */}
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <strong>Message Type:</strong> {selectedMessage.message_type}
+                    <strong className="text-sm">Message Type:</strong> 
+                    <span className="ml-2 text-sm">{selectedMessage.message_type}</span>
                   </div>
                   <div>
-                    <strong>Intent:</strong> {selectedMessage.intent || 'N/A'}
+                    <strong className="text-sm">Intent:</strong> 
+                    <span className="ml-2 text-sm">{selectedMessage.intent || 'N/A'}</span>
                   </div>
                   <div>
-                    <strong>User ID:</strong> {selectedMessage.user_id}
+                    <strong className="text-sm">User ID:</strong> 
+                    <span className="ml-2 text-sm font-mono break-all">{selectedMessage.user_id}</span>
                   </div>
                   <div>
-                    <strong>Conversation ID:</strong> {selectedMessage.conversation_id}
+                    <strong className="text-sm">Conversation ID:</strong> 
+                    <span className="ml-2 text-sm font-mono break-all">{selectedMessage.conversation_id}</span>
                   </div>
                 </div>
                 
                 <div>
-                  <strong>Message Content:</strong>
-                  <div className="mt-2 p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
-                    {selectedMessage.content}
+                  <strong className="text-sm">Message Content:</strong>
+                  <div className="mt-2 p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {selectedMessage.content}
+                    </p>
                   </div>
                 </div>
                 
                 {selectedMessage.processing_time_ms && (
                   <div>
-                    <strong>Processing Time:</strong> {selectedMessage.processing_time_ms}ms
+                    <strong className="text-sm">Processing Time:</strong> 
+                    <span className="ml-2 text-sm">{selectedMessage.processing_time_ms}ms</span>
                   </div>
                 )}
                 
                 {selectedMessage.rating && (
                   <div>
-                    <strong>User Rating:</strong>
-                    <span className={selectedMessage.rating === 1 ? 'text-green-600' : 'text-red-600'}>
+                    <strong className="text-sm">User Rating:</strong>
+                    <span className={`ml-2 text-sm ${selectedMessage.rating === 1 ? 'text-green-600' : 'text-red-600'}`}>
                       {selectedMessage.rating === 1 ? ' 👍 Positive' : ' 👎 Negative'}
                     </span>
                   </div>

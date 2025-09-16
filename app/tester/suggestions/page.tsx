@@ -226,8 +226,7 @@ export default function TesterSuggestionsPage() {
         <div className="flex gap-2">
           <Button 
             onClick={loadSuggestions}
-            variant="secondary"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 btn-secondary"
           >
             <RefreshCw size={16} />
             Refresh
@@ -352,8 +351,7 @@ export default function TesterSuggestionsPage() {
               setSelectedStatus('');
               setSelectedType('');
             }}
-            variant="secondary"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 btn-secondary"
           >
             <Filter size={16} />
             Clear Filters
@@ -386,7 +384,7 @@ export default function TesterSuggestionsPage() {
                 </div>
                 <Button 
                   onClick={() => setSelectedSuggestion(null)}
-                  variant="secondary"
+                  className="btn-secondary"
                 >
                   Close
                 </Button>
@@ -591,8 +589,7 @@ export default function TesterSuggestionsPage() {
                   <div className="flex gap-4 pt-4 border-t">
                     <Button 
                       onClick={() => window.location.href = '/tester/queue'}
-                      variant="secondary"
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 btn-secondary"
                     >
                       <Plus size={16} />
                       Create New Suggestion

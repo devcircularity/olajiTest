@@ -38,25 +38,23 @@ export function canManageIntentConfig(user: UserInfo | null): boolean {
 export function canAccessTesterQueue(user: UserInfo | null): boolean {
   if (!user) return false;
   
-  // If the specific permission exists, use it; otherwise fall back to admin/tester check
-  return user.permissions?.can_access_tester_queue !== undefined 
-    ? user.permissions.can_access_tester_queue 
-    : (isAdmin(user) || user.permissions?.is_tester || user.roles?.includes('TESTER'));
+  // Simplified check - use existing permissions or fall back to admin/tester roles
+  return isAdmin(user) || 
+         user.permissions?.is_tester === true || 
+         user.roles?.includes('TESTER') || 
+         false;
 }
 
 export function canViewLogs(user: UserInfo | null): boolean {
   if (!user) return false;
   
-  // If the specific permission exists, use it; otherwise fall back to admin check
-  return user.permissions?.can_view_logs !== undefined 
-    ? user.permissions.can_view_logs 
-    : isAdmin(user);
+  // Simplified check - fall back to admin check
+  return isAdmin(user);
 }
 
 export function canManageSchools(user: UserInfo | null): boolean {
   if (!user) return false;
   
-  return user.permissions?.can_manage_all_schools !== undefined 
-    ? user.permissions.can_manage_all_schools 
-    : isSuperAdmin(user);
+  // Simplified check - fall back to super admin
+  return isSuperAdmin(user);
 }

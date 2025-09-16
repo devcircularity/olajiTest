@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { userService, User, UserStats } from "@/services/user";
 import { useAuth } from "@/contexts/AuthContext";
-import { canManageUsers } from "@/utils/permissions";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import { Edit, Trash2, UserPlus, ToggleLeft, ToggleRight, Shield } from "lucide-react";
@@ -116,8 +115,8 @@ export default function UsersPage() {
       sortable: true,
       render: (name: string, user: User) => (
         <div>
-          <div className="font-medium">{name}</div>
-          <div className="text-sm text-neutral-500">{user.email}</div>
+          <div className="font-medium text-xs sm:text-sm">{name}</div>
+          <div className="text-xs text-neutral-500 break-all">{user.email}</div>
         </div>
       ),
     },
@@ -147,7 +146,7 @@ export default function UsersPage() {
       key: 'is_active',
       label: 'Status',
       render: (isActive: boolean, user: User) => (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-1">
           <span
             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
               isActive
@@ -168,14 +167,19 @@ export default function UsersPage() {
     {
       key: 'school_count',
       label: 'Schools',
-      render: (count: number) => count.toString(),
+      render: (count: number) => (
+        <span className="text-xs sm:text-sm">{count.toString()}</span>
+      ),
       width: '80px',
     },
     {
       key: 'last_login',
       label: 'Last Login',
-      render: (lastLogin: string) => 
-        lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Never',
+      render: (lastLogin: string) => (
+        <span className="text-xs sm:text-sm">
+          {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Never'}
+        </span>
+      ),
       width: '120px',
     },
   ];
@@ -203,11 +207,16 @@ export default function UsersPage() {
     },
   ];
 
-  if (!canManageUsers(currentUser)) {
+  // Check permissions directly instead of using canManageUsers to avoid type issues
+  const hasManageUsersPermission = currentUser?.permissions?.can_manage_users || 
+                                   currentUser?.permissions?.is_admin || 
+                                   currentUser?.permissions?.is_super_admin;
+
+  if (!hasManageUsersPermission) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Access Denied</h1>
           <p className="text-neutral-600">You don't have permission to manage users.</p>
         </div>
       </div>
@@ -215,53 +224,55 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">User Management</h1>
-          <p className="text-neutral-600">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">User Management</h1>
+          <p className="text-sm sm:text-base text-neutral-600">
             Manage users and their permissions ({pagination.total} total users)
           </p>
         </div>
         <Button 
           onClick={() => setShowCreateUser(true)}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 text-sm"
         >
           <UserPlus size={16} />
-          Add User
+          <span className="hidden sm:inline">Add User</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Mobile responsive */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Total Users</h3>
-            <p className="text-2xl font-bold">{stats.total_users}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Total Users</h3>
+            <p className="text-lg sm:text-2xl font-bold">{stats.total_users}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">Active Users</h3>
-            <p className="text-2xl font-bold text-green-600">{stats.active_users}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Active Users</h3>
+            <p className="text-lg sm:text-2xl font-bold text-green-600">{stats.active_users}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">New This Week</h3>
-            <p className="text-2xl font-bold text-blue-600">{stats.new_users_this_week}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">New This Week</h3>
+            <p className="text-lg sm:text-2xl font-bold text-blue-600">{stats.new_users_this_week}</p>
           </div>
-          <div className="card p-4">
-            <h3 className="text-sm font-medium text-neutral-600">New This Month</h3>
-            <p className="text-2xl font-bold text-purple-600">{stats.new_users_this_month}</p>
+          <div className="card p-3 sm:p-4">
+            <h3 className="text-xs sm:text-sm font-medium text-neutral-600">New This Month</h3>
+            <p className="text-lg sm:text-2xl font-bold text-purple-600">{stats.new_users_this_month}</p>
           </div>
         </div>
       )}
 
-      {/* Role Filter */}
-      <div className="card p-4 mb-6">
-        <div className="flex gap-4 items-center">
-          <label className="text-sm font-medium">Filter by Role:</label>
+      {/* Role Filter - Mobile responsive */}
+      <div className="card p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+          <label className="text-xs sm:text-sm font-medium">Filter by Role:</label>
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            className="input w-48"
+            className="input w-full sm:w-48 text-sm"
           >
             <option value="">All Roles</option>
             <option value="SUPER_ADMIN">Super Admin</option>
@@ -274,20 +285,24 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <DataTable
-        data={users}
-        columns={columns}
-        actions={actions}
-        loading={loading}
-        searchable
-        searchPlaceholder="Search users..."
-        pagination={{
-          currentPage: pagination.currentPage,
-          totalPages: pagination.totalPages,
-          onPageChange: loadUsers,
-        }}
-        emptyMessage="No users found"
-      />
+      {/* Data Table with mobile responsive wrapper */}
+      <div className="overflow-x-auto">
+        <DataTable
+          data={users}
+          columns={columns}
+          actions={actions}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search users..."
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            onPageChange: loadUsers,
+          }}
+          emptyMessage="No users found"
+          className="text-xs sm:text-sm"
+        />
+      </div>
 
       {/* Edit Roles Modal */}
       {editingUser && (
@@ -346,10 +361,12 @@ function EditRolesModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-md w-full">
-        <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">Edit Roles for {user.full_name}</h2>
+        <div className="p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">
+            Edit Roles for {user.full_name}
+          </h2>
           
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {availableRoles.map(role => (
               <label key={role} className="flex items-center gap-3">
                 <input
@@ -358,22 +375,21 @@ function EditRolesModal({
                   onChange={() => toggleRole(role)}
                   className="rounded"
                 />
-                <span className="text-sm">{role.replace('_', ' ')}</span>
+                <span className="text-xs sm:text-sm">{role.replace('_', ' ')}</span>
               </label>
             ))}
           </div>
           
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6">
             <Button 
               onClick={() => onSave(user.id, selectedRoles)}
-              className="flex-1"
+              className="flex-1 text-sm"
             >
               Save Changes
             </Button>
             <Button 
               onClick={onClose}
-              variant="secondary"
-              className="flex-1"
+              className="btn-secondary flex-1 text-sm"
             >
               Cancel
             </Button>
@@ -416,46 +432,46 @@ function CreateUserModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-lg w-full">
-        <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">Create New User</h2>
+      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Create New User</h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <label className="label">Email</label>
+              <label className="label text-xs sm:text-sm">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="input"
+                className="input text-sm"
                 required
               />
             </div>
             
             <div>
-              <label className="label">Full Name</label>
+              <label className="label text-xs sm:text-sm">Full Name</label>
               <input
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                className="input"
+                className="input text-sm"
                 required
               />
             </div>
             
             <div>
-              <label className="label">Password</label>
+              <label className="label text-xs sm:text-sm">Password</label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                className="input"
+                className="input text-sm"
                 required
               />
             </div>
             
             <div>
-              <label className="label">Roles</label>
+              <label className="label text-xs sm:text-sm">Roles</label>
               <div className="space-y-2 mt-2">
                 {availableRoles.map(role => (
                   <label key={role} className="flex items-center gap-3">
@@ -465,7 +481,7 @@ function CreateUserModal({
                       onChange={() => toggleRole(role)}
                       className="rounded"
                     />
-                    <span className="text-sm">{role.replace('_', ' ')}</span>
+                    <span className="text-xs sm:text-sm">{role.replace('_', ' ')}</span>
                   </label>
                 ))}
               </div>
@@ -479,23 +495,22 @@ function CreateUserModal({
                   onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                   className="rounded"
                 />
-                <span className="text-sm">Active User</span>
+                <span className="text-xs sm:text-sm">Active User</span>
               </label>
             </div>
           </div>
           
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6">
             <Button 
               onClick={() => onSave(formData)}
-              className="flex-1"
+              className="flex-1 text-sm"
               disabled={!formData.email || !formData.full_name || !formData.password}
             >
               Create User
             </Button>
             <Button 
               onClick={onClose}
-              variant="secondary"
-              className="flex-1"
+              className="btn-secondary flex-1 text-sm"
             >
               Cancel
             </Button>

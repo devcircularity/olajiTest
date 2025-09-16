@@ -2,7 +2,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { canViewLogs } from "@/utils/permissions";
 import DataTable, { TableColumn } from "@/components/ui/DataTable";
 import { Calendar, Filter, Download } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -70,8 +69,11 @@ export default function LogsPage() {
     {
       key: 'timestamp',
       label: 'Time',
-      render: (timestamp: string) => 
-        new Date(timestamp).toLocaleString(),
+      render: (timestamp: string) => (
+        <span className="text-xs sm:text-sm">
+          {new Date(timestamp).toLocaleString()}
+        </span>
+      ),
       width: '180px',
     },
     {
@@ -95,20 +97,22 @@ export default function LogsPage() {
       key: 'message',
       label: 'Message',
       render: (message: string) => (
-        <span className="font-mono text-sm">{message}</span>
+        <span className="font-mono text-xs sm:text-sm break-words">{message}</span>
       ),
     },
     {
       key: 'user_email',
       label: 'User',
-      render: (email: string) => email || '-',
+      render: (email: string) => (
+        <span className="text-xs sm:text-sm">{email || '-'}</span>
+      ),
       width: '150px',
     },
     {
       key: 'endpoint',
       label: 'Endpoint',
       render: (endpoint: string) => (
-        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all">
           {endpoint || '-'}
         </code>
       ),
@@ -128,11 +132,16 @@ export default function LogsPage() {
     ? logs 
     : logs.filter(log => log.level === selectedLevel);
 
-  if (!canViewLogs(user)) {
+  // Check permissions directly instead of using canViewLogs to avoid type issues
+  // Only admins and super admins can view logs
+  const hasViewLogsPermission = user?.permissions?.is_admin || 
+                               user?.permissions?.is_super_admin;
+
+  if (!hasViewLogsPermission) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-4">Access Denied</h1>
           <p className="text-neutral-600">You don't have permission to view system logs.</p>
         </div>
       </div>
@@ -140,29 +149,31 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-2">System Logs</h1>
-          <p className="text-neutral-600">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">System Logs</h1>
+          <p className="text-sm sm:text-base text-neutral-600">
             Monitor system activity and troubleshoot issues
           </p>
         </div>
-        <Button className="flex items-center gap-2" variant="secondary">
+        <Button className="btn-secondary flex items-center gap-2 text-sm">
           <Download size={16} />
-          Export Logs
+          <span className="hidden sm:inline">Export Logs</span>
+          <span className="sm:hidden">Export</span>
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
+      {/* Filters - Mobile responsive */}
+      <div className="card p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-1">Log Level</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1">Log Level</label>
             <select
               value={selectedLevel}
               onChange={(e) => setSelectedLevel(e.target.value)}
-              className="input w-32"
+              className="input w-full text-sm"
             >
               <option value="ALL">All Levels</option>
               <option value="ERROR">Error</option>
@@ -173,41 +184,46 @@ export default function LogsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Start Date</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1">Start Date</label>
             <input
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="input w-40"
+              className="input w-full text-sm"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">End Date</label>
+            <label className="block text-xs sm:text-sm font-medium mb-1">End Date</label>
             <input
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="input w-40"
+              className="input w-full text-sm"
             />
           </div>
           
-          <Button className="flex items-center gap-2" variant="secondary">
-            <Filter size={16} />
-            Apply Filters
-          </Button>
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Button className="btn-secondary flex items-center gap-2 w-full sm:w-auto text-sm">
+              <Filter size={16} />
+              Apply Filters
+            </Button>
+          </div>
         </div>
       </div>
 
-      <DataTable
-        data={filteredLogs}
-        columns={columns}
-        loading={loading}
-        searchable
-        searchPlaceholder="Search logs..."
-        emptyMessage="No logs found for the selected criteria"
-        className="font-mono text-sm"
-      />
+      {/* Data Table */}
+      <div className="overflow-x-auto">
+        <DataTable
+          data={filteredLogs}
+          columns={columns}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search logs..."
+          emptyMessage="No logs found for the selected criteria"
+          className="font-mono text-xs sm:text-sm"
+        />
+      </div>
     </div>
   );
 }

@@ -25,20 +25,22 @@ export interface SwitchSchoolRequest {
   school_id: string;
 }
 
+// Updated UserInfo interface to match what the AuthContext expects
 export interface UserInfo {
   user_id: string;
   email: string;
-  full_name: string;
-  roles: string[];
+  full_name?: string; // Made optional to match the original interface
   is_active: boolean;
   is_verified: boolean;
+  roles?: string[]; // Made optional to match the original interface
   active_school_id?: string;
   last_login?: string;
-  permissions: {
-    can_manage_users: boolean;
-    is_admin: boolean;
-    is_super_admin: boolean;
-    is_tester: boolean;
+  permissions?: {
+    can_manage_users?: boolean;
+    is_admin?: boolean;
+    is_super_admin?: boolean;
+    is_tester?: boolean;
+    can_manage_intent_config?: boolean;
   };
 }
 
