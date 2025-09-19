@@ -1,0 +1,31 @@
+{
+  "version": 3,
+  "middleware": {
+    "/": {
+      "files": [
+        "prerender-manifest.js",
+        "server/edge-runtime-webpack.js",
+        "server/middleware.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/api(?:\\/((?!auth\\/login|auth\\/register|health).*))(.json)?[\\/#\\?]?$",
+          "originalSource": "/api/((?!auth/login|auth/register|health).*)"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "environments": {
+        "previewModeId": "d03b02a7a0ef90d740f4991e94e793d3",
+        "previewModeSigningKey": "b886873682c5f0b39bfe5cc9132ae663bc0acd1fa7095f2966cab16891d62b0a",
+        "previewModeEncryptionKey": "bef0fd3165d628e90aef21ed55f6b497c1a03644336f78e3029d5da48277f94c"
+      }
+    }
+  },
+  "functions": {},
+  "sortedMiddleware": [
+    "/"
+  ]
+}

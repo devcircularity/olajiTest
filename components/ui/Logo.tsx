@@ -55,13 +55,15 @@ interface LogoProps extends VariantProps<typeof logoVariants> {
   href?: string;
   className?: string;
   showText?: boolean;
+  asLink?: boolean; // New prop to control Link rendering
 }
 
 export default function Logo({ 
   size = "sm", 
   href = "/", 
   className,
-  showText = true 
+  showText = true,
+  asLink = true // Default to true for backward compatibility
 }: LogoProps) {
   const content = (
     <div className={clsx(logoVariants({ size }), className)}>
@@ -76,7 +78,8 @@ export default function Logo({
     </div>
   );
 
-  if (href) {
+  // Only render as Link if explicitly requested and href is provided
+  if (asLink && href) {
     return (
       <Link href={href}>
         {content}
@@ -88,8 +91,8 @@ export default function Logo({
 }
 
 // Convenience components for specific use cases
-export function NavbarLogo({ className }: { className?: string }) {
-  return <Logo size="sm" className={className} />;
+export function NavbarLogo({ className, asLink = false }: { className?: string; asLink?: boolean }) {
+  return <Logo size="sm" className={className} asLink={asLink} />;
 }
 
 export function AuthLogo({ className }: { className?: string }) {
@@ -101,5 +104,5 @@ export function HeroLogo({ className }: { className?: string }) {
 }
 
 export function LogoIcon({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) {
-  return <Logo size={size} showText={false} href={undefined} className={className} />;
+  return <Logo size={size} showText={false} asLink={false} className={className} />;
 }

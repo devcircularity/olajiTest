@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import { 
-  ChevronLeft, LogOut, Settings, RefreshCw, 
+  ChevronLeft, LogOut, Settings, RefreshCw, Menu,
   LayoutDashboard, Users, MessageSquare, Activity, 
   FileText, Database, TestTube, TrendingUp,
   GraduationCap, User, Shield, AlertCircle, 
@@ -197,13 +197,6 @@ export default function Sidebar({
           href: '/tester/suggestions',
           icon: <MessageSquare size={18} />,
           section: 'tester'
-        },
-        {
-          id: 'tester-stats',
-          label: 'Analytics',
-          href: '/tester/stats',
-          icon: <BarChart3 size={18} />,
-          section: 'tester'
         }
       )
     }
@@ -246,6 +239,14 @@ export default function Sidebar({
       onCollapse(false)
     }
   }
+
+  // Toggle hamburger handler
+  const handleHamburgerToggle = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('Hamburger clicked from sidebar')
+    onCollapse(!collapsed)
+  }, [collapsed, onCollapse])
 
   // Render navigation section
   const renderNavSection = (title: string, items: NavItem[]) => {
@@ -318,7 +319,7 @@ export default function Sidebar({
       `}
       onClick={handleSidebarClick}
     >
-      {/* Header with logo/brand */}
+      {/* Header with logo/brand and hamburger menu */}
       <div className="px-4 py-4 border-b border-neutral-200/50 dark:border-neutral-700/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center min-w-0">
@@ -328,22 +329,32 @@ export default function Sidebar({
               </div>
             ) : (
               <Link href="/dashboard" className="flex items-center">
-                <Logo size="sm" />
+                <Logo size="sm" asLink={false} />
               </Link>
             )}
           </div>
-          {!isMobile && !collapsed && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onCollapse(true)
-              }}
-              className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              title="Collapse sidebar"
-            >
-              <ChevronLeft size={18} />
-            </button>
-          )}
+          {/* Hamburger menu - always visible */}
+          <button
+            onClick={handleHamburgerToggle}
+            className="
+              p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 
+              transition-colors cursor-pointer z-50
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+            "
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {!isMobile && collapsed ? (
+              <Menu size={18} className="text-neutral-600 dark:text-neutral-400" />
+            ) : (
+              <ChevronLeft 
+                size={18} 
+                className={`text-neutral-600 dark:text-neutral-400 transition-transform ${
+                  collapsed ? 'rotate-180' : ''
+                }`} 
+              />
+            )}
+          </button>
         </div>
       </div>
 

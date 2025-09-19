@@ -1,4 +1,4 @@
-// services/tester.ts
+// services/tester.ts - Clean production version
 import { apiClient } from './api';
 
 export interface ProblematicMessage {
@@ -29,10 +29,21 @@ export interface ProblematicMessage {
   user_id: string;
 }
 
+export interface ConversationMessage {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: string;
+  intent?: string;
+  rating?: number;
+  processing_time_ms?: number;
+  is_problematic?: boolean;
+}
+
 export interface TesterSuggestionCreate {
   message_id?: string;
   routing_log_id?: string;
-  suggestion_type: 'regex_pattern' | 'prompt_template' | 'intent_mapping' | 'handler_improvement';
+  suggestion_type: string;  // Will be mapped in submitSuggestion method
   title: string;
   description: string;
   handler: string;
@@ -88,6 +99,7 @@ export interface GetQueueParams {
   limit?: number;
   days_back?: number;
   school_id?: string;
+  show_suggested?: boolean; // NEW: Include messages that already have suggestions
 }
 
 export interface GetSuggestionsParams {
@@ -110,9 +122,49 @@ class TesterService {
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.days_back) searchParams.append('days_back', params.days_back.toString());
     if (params.school_id) searchParams.append('school_id', params.school_id);
+    if (params.show_suggested !== undefined) searchParams.append('show_suggested', params.show_suggested.toString()); // NEW
     
     const response = await apiClient.get(`/api/tester/queue?${searchParams.toString()}`);
     return response.data;
+  }
+
+  async getConversation(conversationId: string, messageId?: string): Promise<ConversationMessage[]> {
+    try {
+      const params = messageId ? `?message_id=${messageId}` : '';
+      const response = await apiClient.get(`/api/tester/conversation/${conversationId}${params}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        try {
+          const fallbackResponse = await apiClient.get(`/api/chat/conversations/${conversationId}/messages`);
+          const messages = fallbackResponse.data.map((msg: any) => ({
+            id: msg.id || msg.message_id,
+            content: msg.content || msg.user_message || msg.assistant_response,
+            role: msg.message_type === 'USER' ? 'user' : 'assistant',
+            timestamp: msg.created_at,
+            intent: msg.intent,
+            rating: msg.rating,
+            processing_time_ms: msg.processing_time_ms,
+            is_problematic: messageId ? (msg.id === messageId || msg.message_id === messageId) : false
+          }));
+          
+          if (messageId) {
+            const targetIndex = messages.findIndex((m: any) => m.id === messageId);
+            if (targetIndex > 0) {
+              const userMessage = messages.slice(0, targetIndex).reverse().find((m: any) => m.role === 'user');
+              const targetMessage = messages[targetIndex];
+              return userMessage ? [userMessage, targetMessage] : [targetMessage];
+            }
+            return messages.filter((m: any) => m.id === messageId);
+          }
+          
+          return messages;
+        } catch (fallbackError) {
+          throw new Error('Unable to load conversation. This feature may not be available yet.');
+        }
+      }
+      throw error;
+    }
   }
 
   async submitSuggestion(suggestion: TesterSuggestionCreate): Promise<{
@@ -124,7 +176,34 @@ class TesterService {
     priority: string;
     created_at: string;
   }> {
-    const response = await apiClient.post('/api/tester/suggestions', suggestion);
+    // Map frontend suggestion types to backend expected values
+    const suggestionTypeMapping: { [key: string]: string } = {
+      'user_query': 'regex_pattern',      // User query issues -> regex patterns for better classification
+      'ai_response': 'prompt_template',   // AI response issues -> prompt templates for better responses
+      'regex_pattern': 'regex_pattern',   // Direct mapping
+      'prompt_template': 'prompt_template', // Direct mapping
+      'intent_mapping': 'intent_mapping', // Direct mapping
+      'handler_improvement': 'handler_improvement' // Direct mapping
+    };
+
+    const backendSuggestionType = suggestionTypeMapping[suggestion.suggestion_type] || suggestion.suggestion_type;
+
+    // Build the suggestion payload with backend-compatible structure
+    const payload = {
+      message_id: suggestion.message_id,
+      routing_log_id: suggestion.routing_log_id,
+      suggestion_type: backendSuggestionType,
+      title: suggestion.title,
+      description: suggestion.description,
+      handler: suggestion.handler,
+      intent: suggestion.intent,
+      pattern: suggestion.pattern,
+      template_text: suggestion.template_text,
+      priority: suggestion.priority || 'medium',
+      tester_note: suggestion.tester_note
+    };
+
+    const response = await apiClient.post('/api/tester/suggestions', payload);
     return response.data;
   }
 

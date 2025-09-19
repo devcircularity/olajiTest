@@ -97,8 +97,8 @@ export default function DataTable<T extends Record<string, any>>({
 
   if (loading) {
     return (
-      <div className={`card ${className}`}>
-        <div className="p-8 text-center">
+      <div className={`h-full flex items-center justify-center ${className}`}>
+        <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[--color-brand]"></div>
           <p className="mt-2 text-neutral-600">Loading...</p>
         </div>
@@ -107,10 +107,10 @@ export default function DataTable<T extends Record<string, any>>({
   }
 
   return (
-    <div className={`card ${className}`}>
-      {/* Search Bar */}
+    <div className={`h-full flex flex-col bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm ${className}`}>
+      {/* Fixed Search Bar */}
       {searchable && (
-        <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex-none p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={16} />
             <input
@@ -119,29 +119,30 @@ export default function DataTable<T extends Record<string, any>>({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg 
-                         bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-[--color-brand] focus:border-transparent"
+                         bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-[--color-brand] focus:border-transparent text-sm"
             />
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Scrollable Table Container */}
+      <div className="flex-1 min-h-0 overflow-auto">
         <table className="w-full">
-          <thead className="bg-neutral-50 dark:bg-neutral-800">
+          <thead className="bg-neutral-50 dark:bg-neutral-800 sticky top-0 z-10">
             <tr>
               {columns.map((column, index) => (
                 <th
                   key={index}
                   className={`px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider
                     ${column.sortable ? 'cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700' : ''}
-                    ${column.width ? `w-${column.width}` : ''}`}
+                    ${column.width ? '' : 'min-w-0'}`}
+                  style={column.width ? { width: column.width, minWidth: column.width } : {}}
                   onClick={column.sortable ? () => handleSort(String(column.key)) : undefined}
                 >
                   <div className="flex items-center gap-1">
-                    {column.label}
+                    <span className="truncate">{column.label}</span>
                     {column.sortable && sortConfig?.key === column.key && (
-                      <span className="text-[--color-brand]">
+                      <span className="text-[--color-brand] flex-shrink-0">
                         {sortConfig.direction === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
@@ -149,7 +150,7 @@ export default function DataTable<T extends Record<string, any>>({
                 </th>
               ))}
               {actions && actions.length > 0 && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-32">
                   Actions
                 </th>
               )}
@@ -169,26 +170,34 @@ export default function DataTable<T extends Record<string, any>>({
               sortedData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                   {columns.map((column, colIndex) => (
-                    <td key={colIndex} className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100">
-                      {getCellValue(row, column)}
+                    <td 
+                      key={colIndex} 
+                      className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
+                      style={column.width ? { width: column.width, minWidth: column.width } : {}}
+                    >
+                      <div className="min-w-0">
+                        {getCellValue(row, column)}
+                      </div>
                     </td>
                   ))}
                   {actions && actions.length > 0 && (
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex gap-2">
+                    <td className="px-4 py-3 text-sm w-32">
+                      <div className="flex gap-1 flex-wrap">
                         {actions.map((action, actionIndex) => (
                           <Button
                             key={actionIndex}
                             onClick={() => action.onClick(row)}
-                            className={`btn-sm ${
+                            className={`btn-sm whitespace-nowrap ${
                               action.variant === 'danger' ? 'btn-danger' :
                               action.variant === 'secondary' ? 'btn-secondary' :
                               'btn-primary'
                             }`}
                             disabled={action.disabled?.(row)}
+                            title={action.label}
                           >
                             {action.icon && <span className="mr-1">{action.icon}</span>}
-                            {action.label}
+                            <span className="hidden sm:inline">{action.label}</span>
+                            <span className="sm:hidden">{action.icon}</span>
                           </Button>
                         ))}
                       </div>
@@ -201,9 +210,9 @@ export default function DataTable<T extends Record<string, any>>({
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Fixed Pagination */}
       {pagination && (
-        <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+        <div className="flex-none px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between bg-neutral-50 dark:bg-neutral-800">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Page {pagination.currentPage} of {pagination.totalPages}
           </p>
@@ -214,14 +223,14 @@ export default function DataTable<T extends Record<string, any>>({
               className="btn-sm btn-secondary"
             >
               <ChevronLeft size={16} />
-              Previous
+              <span className="hidden sm:inline ml-1">Previous</span>
             </Button>
             <Button
               onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
               disabled={pagination.currentPage >= pagination.totalPages}
               className="btn-sm btn-secondary"
             >
-              Next
+              <span className="hidden sm:inline mr-1">Next</span>
               <ChevronRight size={16} />
             </Button>
           </div>

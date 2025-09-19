@@ -1,31 +1,27 @@
 // app/tester/layout.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import WorkspaceSidebar from "@/components/layout/WorkspaceSidebar";
+import WorkspaceShell from "@/components/layout/WorkspaceShell";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 
 export default function TesterLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   
+  // Set the header title for tester section
   useEffect(() => {
-    // Check if mobile on mount and window resize
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      // Auto-collapse sidebar on mobile
-      if (window.innerWidth < 768) {
-        setSidebarCollapsed(true);
-      }
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Tester Dashboard',
+      subtitle: 'Monitor and improve AI responses' 
+    });
+    
+    // Clean up on unmount
+    return () => HeaderTitleBus.send({ type: 'clear' });
   }, []);
-
+  
   useEffect(() => {
     // Wait for auth to finish loading
     if (isLoading) return;
@@ -45,7 +41,7 @@ export default function TesterLayout({ children }: { children: React.ReactNode }
                                user.roles?.includes("SUPER_ADMIN");
 
     if (!hasTesterPermission) {
-      console.log("🔍 User lacks tester permissions, redirecting...", {
+      console.log("User lacks tester permissions, redirecting...", {
         userRoles: user.roles,
         userPermissions: user.permissions,
       });
@@ -90,55 +86,10 @@ export default function TesterLayout({ children }: { children: React.ReactNode }
     return null;
   }
   
+  // Use the unified WorkspaceShell instead of custom tester layout
   return (
-    <div className="flex h-screen bg-neutral-50 dark:bg-neutral-950">
-      {/* Mobile backdrop */}
-      {isMobile && !sidebarCollapsed && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarCollapsed(true)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        ${isMobile ? 'fixed top-0 left-0 h-full z-50' : 'relative'}
-        ${isMobile && sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'}
-        transition-transform duration-300 ease-in-out
-      `}>
-        <WorkspaceSidebar
-          collapsed={sidebarCollapsed}
-          onCollapse={setSidebarCollapsed}
-          isMobile={isMobile}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header Bar - Shows when sidebar is collapsed on mobile */}
-        {isMobile && sidebarCollapsed && (
-          <div className="lg:hidden bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-4 py-3">
-            <button
-              onClick={() => setSidebarCollapsed(false)}
-              className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-              title="Open sidebar"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-hidden bg-white dark:bg-neutral-900">
-          <div className="h-full overflow-y-auto">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+    <WorkspaceShell>
+      {children}
+    </WorkspaceShell>
   );
 }

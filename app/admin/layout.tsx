@@ -4,10 +4,23 @@ import React, { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import WorkspaceShell from "@/components/layout/WorkspaceShell";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  
+  // Set the header title for admin section
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Admin Dashboard',
+      subtitle: 'Manage AI training data, models, and system configuration' 
+    });
+    
+    // Clean up on unmount
+    return () => HeaderTitleBus.send({ type: 'clear' });
+  }, []);
   
   useEffect(() => {
     // Wait for auth to finish loading
@@ -27,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     // If not admin, redirect based on their role
     if (!isAdmin) {
-      console.log("🔍 User lacks admin permissions, redirecting...", {
+      console.log("User lacks admin permissions, redirecting...", {
         userRoles: user.roles,
         userPermissions: user.permissions,
       });

@@ -1,4 +1,4 @@
-// services/api.ts
+// services/api.ts - Clean production version
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 
 // Types for API responses
@@ -38,18 +38,9 @@ class ApiClient {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Log requests in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔗 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-          if (config.data) {
-            console.log('📤 Request data:', config.data);
-          }
-        }
-
         return config;
       },
       (error) => {
-        console.error('❌ Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
@@ -57,11 +48,6 @@ class ApiClient {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
-        // Log successful responses in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ API Response: ${response.status} ${response.config.url}`);
-          console.log('📥 Response data:', response.data);
-        }
         return response;
       },
       (error: AxiosError) => {
@@ -72,12 +58,9 @@ class ApiClient {
   }
 
   private handleApiError(error: AxiosError): void {
-    console.error('❌ API Error:', error);
-
     // Handle specific error codes
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data as any;
 
       switch (status) {
         case 401:
@@ -95,30 +78,21 @@ class ApiClient {
           break;
         
         case 403:
-          console.warn('⚠️ Access forbidden:', data?.detail || 'Insufficient permissions');
+          // Access forbidden - handled silently
           break;
         
         case 404:
-          console.warn('⚠️ Resource not found:', data?.detail || 'Resource not found');
+          // Resource not found - handled silently
           break;
         
         case 422:
-          console.warn('⚠️ Validation error:', data?.detail || 'Invalid request data');
+          // Validation error - handled silently
           break;
         
         case 500:
-          console.error('💥 Server error:', data?.detail || 'Internal server error');
+          // Server error - handled silently
           break;
-        
-        default:
-          console.error(`💥 HTTP ${status}:`, data?.detail || error.message);
       }
-    } else if (error.request) {
-      // Network error
-      console.error('🌐 Network error - no response received:', error.message);
-    } else {
-      // Request setup error
-      console.error('⚙️ Request setup error:', error.message);
     }
   }
 
@@ -172,7 +146,6 @@ class ApiClient {
       const response = await this.client.get('/healthz');
       return response.status === 200;
     } catch (error) {
-      console.error('Health check failed:', error);
       return false;
     }
   }

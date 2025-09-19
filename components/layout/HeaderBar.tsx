@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
@@ -44,11 +44,34 @@ export default function HeaderBar() {
   const { token, active_school_id, logout } = useAuth()
   const [openModal, setOpenModal] = useState(false)
   const [showTip, setShowTip] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
   const [pageTitle, setPageTitle] = useState<string>('')
   const [pageSubtitle, setPageSubtitle] = useState<string>('')
+  const [isMobile, setIsMobile] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const tipRef = useRef<HTMLDivElement>(null)
 
+  // Check mobile screen size and listen for sidebar state changes
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 1024 // lg breakpoint
+      setIsMobile(mobile)
+    }
+    
+    const handleSidebarStateChange = (e: CustomEvent) => {
+      const { collapsed, isMobile } = e.detail
+      setSidebarCollapsed(collapsed)
+      setIsMobile(isMobile)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    window.addEventListener('sidebarStateChange', handleSidebarStateChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile)
+      window.removeEventListener('sidebarStateChange', handleSidebarStateChange as EventListener)
+    }
+  }, [])
   const claims = useMemo(() => decodeJwt(token || undefined), [token])
   const name = claims?.full_name
   const email = claims?.email
@@ -56,16 +79,12 @@ export default function HeaderBar() {
   const avatarTxt = initialsFrom(name, email)
   const schoolId = active_school_id ?? claims?.active_school_id
 
-  // Check mobile screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 1024 // lg breakpoint
-      setIsMobile(mobile)
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+  // Hamburger menu click handler
+  const handleHamburgerToggle = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('🍔 HeaderBar hamburger clicked!')
+    SidebarBus.send({ type: 'toggle' })
   }, [])
 
   // Listen for header title updates
@@ -93,37 +112,53 @@ export default function HeaderBar() {
     return () => document.removeEventListener('click', onClick)
   }, [])
 
-  const handleSidebarToggle = () => {
-    SidebarBus.send({ type: 'toggle' })
-  }
+  // Show hamburger menu when on mobile OR when sidebar is collapsed on desktop
+  const showHamburgerMenu = isMobile || sidebarCollapsed
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-      {/* Left side - Hamburger menu and title */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        {isMobile && (
+    <header className="relative flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+      {/* Left side - Hamburger menu and page title */}
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        {/* Hamburger menu button - always visible when needed */}
+        {showHamburgerMenu && (
           <button
-            onClick={handleSidebarToggle}
-            className="p-2 -ml-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            onClick={handleHamburgerToggle}
+            className="
+              flex-shrink-0 p-2 rounded-lg 
+              hover:bg-neutral-100 dark:hover:bg-neutral-800 
+              active:bg-neutral-200 dark:active:bg-neutral-700
+              transition-colors duration-150 
+              cursor-pointer select-none
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+            "
             aria-label="Toggle sidebar"
+            type="button"
+            title="Toggle sidebar"
           >
-            <Menu size={20} className="text-neutral-600 dark:text-neutral-400" />
+            <Menu 
+              size={20} 
+              className="text-neutral-600 dark:text-neutral-400" 
+            />
           </button>
         )}
         
-        {/* Dynamic page title */}
-        {pageTitle && (
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-100 truncate">
-              {pageTitle}
-            </h1>
-            {pageSubtitle && (
-              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 truncate">
-                {pageSubtitle}
-              </p>
-            )}
-          </div>
-        )}
+        {/* Page title */}
+        <div className="flex-1 min-w-0">
+          {pageTitle ? (
+            <div>
+              <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                {pageTitle}
+              </h1>
+              {pageSubtitle && (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate mt-1">
+                  {pageSubtitle}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="h-6" />
+          )}
+        </div>
       </div>
 
       {/* Right side - User controls */}

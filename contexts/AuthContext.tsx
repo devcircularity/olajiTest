@@ -11,10 +11,11 @@ type AuthState = {
 }
 
 type AuthContextType = AuthState & {
-  login: (data: { token: string }) => Promise<void>
+  login: (data: { token: string }) => Promise<UserInfo>
   logout: () => void
   setSchoolId: (schoolId: string) => void
   isAuthenticated: boolean
+  hasValidRole: boolean
 }
 
 const AuthCtx = createContext<AuthContextType>({
@@ -22,11 +23,24 @@ const AuthCtx = createContext<AuthContextType>({
   active_school_id: null,
   user: null,
   isLoading: true,
-  login: async () => {},
+  login: async () => ({} as UserInfo),
   logout: () => {},
   setSchoolId: () => {},
-  isAuthenticated: false
+  isAuthenticated: false,
+  hasValidRole: false
 })
+
+function checkUserHasValidRole(user: UserInfo | null): boolean {
+  if (!user) return false
+  
+  // Check for valid roles/permissions
+  const hasValidRole = 
+    user.roles?.includes("TESTER") || 
+    user.permissions?.is_admin || 
+    user.permissions?.is_super_admin
+  
+  return !!hasValidRole
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ 
@@ -47,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         try {
           const user = await authService.getCurrentUser()
+          
           setState({ 
             token, 
             active_school_id: sid,
@@ -54,7 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false 
           })
         } catch (error) {
-          console.error('Failed to fetch user data:', error)
           localStorage.removeItem('token')
           localStorage.removeItem('active_school_id')
           setState({ 
@@ -77,12 +91,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
   }, [])
 
-  const login = async (data: { token: string }) => {
+  const login = async (data: { token: string }): Promise<UserInfo> => {
     localStorage.setItem('token', data.token)
     authService.storeToken(data.token)
     
     try {
       const user = await authService.getCurrentUser()
+      
       setState(prev => ({ 
         ...prev, 
         token: data.token, 
@@ -90,23 +105,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false 
       }))
       
-      // Route user after successful login based on their role
-      if (user.roles?.includes("TESTER")) {
-        router.replace("/tester");
-      } else if (user.permissions?.is_admin || user.permissions?.is_super_admin) {
-        router.replace("/admin");
-      } else {
-        router.replace("/dashboard");
-      }
+      // Return user object for the login page to handle routing
+      return user
     } catch (error) {
-      console.error('Failed to fetch user data after login:', error)
       setState(prev => ({ 
         ...prev, 
         token: data.token, 
         user: null,
         isLoading: false 
       }))
-      throw error; // Re-throw so login form can handle the error
+      throw error
     }
   }
 
@@ -129,12 +137,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState(prev => ({ ...prev, active_school_id: schoolId }))
   }
 
+  const hasValidRole = checkUserHasValidRole(state.user)
+
   const value: AuthContextType = {
     ...state,
     login,
     logout,
     setSchoolId,
-    isAuthenticated: !!state.token && !!state.user && !state.isLoading
+    isAuthenticated: !!state.token && !!state.user && !state.isLoading,
+    hasValidRole
   }
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
