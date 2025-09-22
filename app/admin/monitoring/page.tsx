@@ -1,44 +1,47 @@
-// app/admin/monitoring/page.tsx
+// app/admin/monitoring/page.tsx - Simplified Table-Only Version
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { chatMonitoringService, ChatMessage, RealtimeStats } from "@/services/chatMonitoring";
+import { chatMonitoringService, ChatMessage } from "@/services/chatMonitoring";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
-import { Eye, MessageSquare, TrendingUp, TrendingDown, Clock, Users, AlertTriangle } from "lucide-react";
+import { Eye, X, RefreshCw } from "lucide-react";
 import Button from "@/components/ui/Button";
+
+// Extended interface to include school_name and conversation details
+interface ExtendedChatMessage extends ChatMessage {
+  school_name?: string;
+  userFullName?: string;
+  conversationTitle?: string;
+}
 
 export default function ChatMonitoringPage() {
   const { user } = useAuth();
-  const [realtimeStats, setRealtimeStats] = useState<RealtimeStats | null>(null);
   const [recentMessages, setRecentMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+  const [timeRange, setTimeRange] = useState<number>(720); // 1 month default
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
     loadData();
-    
+  }, [timeRange]);
+
+  useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(loadData, 30000);
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, timeRange]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Load real-time stats and recent messages in parallel
-      const [stats, messages] = await Promise.all([
-        chatMonitoringService.getRealtimeStats(),
-        chatMonitoringService.getRecentMessages({
-          limit: 50,
-          hours_back: 24
-        })
-      ]);
+      const messages = await chatMonitoringService.getRecentMessages({
+        limit: 50,
+        hours_back: timeRange
+      });
       
-      setRealtimeStats(stats);
       setRecentMessages(messages);
     } catch (error) {
       console.error('Failed to load monitoring data:', error);
@@ -50,7 +53,6 @@ export default function ChatMonitoringPage() {
   const handleViewConversation = async (message: ChatMessage) => {
     try {
       const conversation = await chatMonitoringService.getConversationDetails(message.conversation_id);
-      // Could open a modal or navigate to detailed view
       console.log('Conversation details:', conversation);
       setSelectedMessage(message);
     } catch (error) {
@@ -58,7 +60,15 @@ export default function ChatMonitoringPage() {
     }
   };
 
-  const columns: TableColumn<ChatMessage>[] = [
+  const getTimeRangeLabel = (hours: number) => {
+    if (hours <= 24) return 'Last 24 hours';
+    if (hours <= 168) return 'Last week';
+    if (hours <= 720) return 'Last month';
+    if (hours <= 2160) return 'Last 3 months';
+    return 'Last year';
+  };
+
+  const columns: TableColumn<ExtendedChatMessage>[] = [
     {
       key: 'created_at',
       label: 'Time',
@@ -70,9 +80,11 @@ export default function ChatMonitoringPage() {
         if (diffMinutes < 1) return <span className="text-xs sm:text-sm">Just now</span>;
         if (diffMinutes < 60) return <span className="text-xs sm:text-sm">{diffMinutes}m ago</span>;
         if (diffMinutes < 1440) return <span className="text-xs sm:text-sm">{Math.floor(diffMinutes / 60)}h ago</span>;
+        if (diffMinutes < 10080) return <span className="text-xs sm:text-sm">{Math.floor(diffMinutes / 1440)}d ago</span>;
         return <span className="text-xs sm:text-sm">{messageTime.toLocaleDateString()}</span>;
       },
       width: '100px',
+      sortable: true,
     },
     {
       key: 'message_type',
@@ -113,9 +125,9 @@ export default function ChatMonitoringPage() {
       label: 'Rating',
       render: (rating: number, message: ChatMessage) => {
         if (message.message_type === 'user') return <span className="text-xs sm:text-sm">-</span>;
-        if (rating === 1) return <span className="text-green-600">👍</span>;
-        if (rating === -1) return <span className="text-red-600">👎</span>;
-        return <span className="text-gray-400">-</span>;
+        if (rating === 1) return <span className="text-green-600 text-sm">👍</span>;
+        if (rating === -1) return <span className="text-red-600 text-sm">👎</span>;
+        return <span className="text-gray-400 text-xs">-</span>;
       },
       width: '60px',
     },
@@ -129,9 +141,31 @@ export default function ChatMonitoringPage() {
       ),
       width: '100px',
     },
+    {
+      key: 'school_name',
+      label: 'School',
+      render: (schoolName: string, message: ChatMessage) => {
+        if (schoolName) {
+          return (
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+              {schoolName}
+            </span>
+          );
+        }
+        if (message.school_id) {
+          return (
+            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
+              {message.school_id.substring(0, 8)}...
+            </code>
+          );
+        }
+        return <span className="text-xs text-gray-400">No School</span>;
+      },
+      width: '120px',
+    },
   ];
 
-  const actions: TableAction<ChatMessage>[] = [
+  const actions: TableAction<ExtendedChatMessage>[] = [
     {
       label: 'View Conversation',
       icon: <Eye size={14} />,
@@ -140,7 +174,6 @@ export default function ChatMonitoringPage() {
     },
   ];
 
-  // Check permissions directly instead of using canViewLogs to avoid type issues
   const hasMonitoringPermission = user?.permissions?.is_admin || 
                                   user?.permissions?.is_super_admin;
 
@@ -157,15 +190,28 @@ export default function ChatMonitoringPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header - Mobile responsive */}
+      {/* Header with Time Range Filter */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Chat Monitoring</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">Chat Messages</h1>
           <p className="text-sm sm:text-base text-neutral-600">
-            Real-time monitoring of chat interactions and system performance
+            Detailed view of all chat interactions ({getTimeRangeLabel(timeRange)})
           </p>
         </div>
+        
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(Number(e.target.value))}
+            className="input text-sm"
+          >
+            <option value={24}>Last 24 hours</option>
+            <option value={168}>Last week</option>
+            <option value={720}>Last month</option>
+            <option value={2160}>Last 3 months</option>
+            <option value={8760}>Last year</option>
+          </select>
+          
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -175,88 +221,26 @@ export default function ChatMonitoringPage() {
             />
             <span className="text-xs sm:text-sm">Auto-refresh</span>
           </label>
-          <Button 
-            onClick={loadData} 
-            className="btn-secondary text-sm"
-          >
-            Refresh Now
+          
+          <Button onClick={loadData} className="btn-secondary text-sm flex items-center gap-2">
+            <RefreshCw size={14} />
+            Refresh
           </Button>
         </div>
       </div>
 
-      {/* Real-time Stats - Mobile responsive grid */}
-      {realtimeStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users size={14} className="text-blue-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Active Chats</h3>
-            </div>
-            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.active_conversations}</p>
-          </div>
-          
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <MessageSquare size={14} className="text-green-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Messages Today</h3>
-            </div>
-            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.messages_today}</p>
-          </div>
-          
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock size={14} className="text-purple-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Avg Response</h3>
-            </div>
-            <p className="text-lg sm:text-2xl font-bold">{realtimeStats.average_response_time}ms</p>
-          </div>
-          
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={14} className="text-green-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Satisfaction</h3>
-            </div>
-            <p className="text-lg sm:text-2xl font-bold">{(realtimeStats.satisfaction_rate * 100).toFixed(1)}%</p>
-          </div>
-          
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle size={14} className="text-orange-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Fallback Rate</h3>
-            </div>
-            <p className="text-lg sm:text-2xl font-bold">{(realtimeStats.fallback_rate * 100).toFixed(1)}%</p>
-          </div>
-          
-          <div className="card p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp size={14} className="text-blue-600 flex-shrink-0" />
-              <h3 className="text-xs sm:text-sm font-medium text-neutral-600 truncate">Top Intent</h3>
-            </div>
-            <p className="text-sm sm:text-lg font-bold truncate">
-              {realtimeStats.top_intents_today[0]?.intent || 'N/A'}
-            </p>
-            <p className="text-xs text-neutral-500">
-              {realtimeStats.top_intents_today[0]?.count || 0} uses
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Messages */}
-      <div className="mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Recent Messages (Last 24 Hours)</h2>
-        <div className="overflow-x-auto">
-          <DataTable
-            data={recentMessages}
-            columns={columns}
-            actions={actions}
-            loading={loading}
-            searchable
-            searchPlaceholder="Search messages..."
-            emptyMessage="No recent messages found"
-            className="text-xs sm:text-sm"
-          />
-        </div>
+      {/* Messages Table - Increased height */}
+      <div className="h-[800px]">
+        <DataTable
+          data={recentMessages}
+          columns={columns}
+          actions={actions}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search messages..."
+          emptyMessage="No messages found for the selected time period"
+          className="text-xs sm:text-sm"
+        />
       </div>
 
       {/* Conversation Detail Modal */}
@@ -269,13 +253,12 @@ export default function ChatMonitoringPage() {
                 <h2 className="text-lg sm:text-xl font-bold">Conversation Details</h2>
                 <Button 
                   onClick={() => setSelectedMessage(null)}
-                  className="btn-secondary text-sm"
+                  className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors flex-shrink-0"
                 >
-                  Close
+                  <X size={16} />
                 </Button>
               </div>
 
-              {/* Message Details - Mobile responsive */}
               <div className="space-y-3 sm:space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
@@ -287,12 +270,26 @@ export default function ChatMonitoringPage() {
                     <span className="ml-2 text-sm">{selectedMessage.intent || 'N/A'}</span>
                   </div>
                   <div>
-                    <strong className="text-sm">User ID:</strong> 
-                    <span className="ml-2 text-sm font-mono break-all">{selectedMessage.user_id}</span>
+                    <strong className="text-sm">School:</strong> 
+                    <span className="ml-2 text-sm">
+                      {selectedMessage.school_name || selectedMessage.school_id || 'No School'}
+                    </span>
                   </div>
                   <div>
-                    <strong className="text-sm">Conversation ID:</strong> 
-                    <span className="ml-2 text-sm font-mono break-all">{selectedMessage.conversation_id}</span>
+                    <strong className="text-sm">User:</strong> 
+                    <span className="ml-2 text-sm">
+                      {selectedMessage.userFullName || selectedMessage.user_id}
+                    </span>
+                  </div>
+                  <div>
+                    <strong className="text-sm">Created:</strong> 
+                    <span className="ml-2 text-sm">{new Date(selectedMessage.created_at).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <strong className="text-sm">Conversation:</strong> 
+                    <span className="ml-2 text-sm">
+                      {selectedMessage.conversationTitle || `${selectedMessage.conversation_id.substring(0, 8)}...`}
+                    </span>
                   </div>
                 </div>
                 

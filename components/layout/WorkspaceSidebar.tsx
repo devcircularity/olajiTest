@@ -129,13 +129,6 @@ export default function Sidebar({
           section: 'admin'
         },
         {
-          id: 'admin-intent-config',
-          label: 'Intent Config',
-          href: '/admin/intent-config',
-          icon: <Settings size={18} />,
-          section: 'admin'
-        },
-        {
           id: 'admin-monitoring',
           label: 'Monitoring',
           href: '/admin/monitoring',

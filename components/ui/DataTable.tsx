@@ -97,7 +97,7 @@ export default function DataTable<T extends Record<string, any>>({
 
   if (loading) {
     return (
-      <div className={`h-full flex items-center justify-center ${className}`}>
+      <div className={`h-full flex items-center justify-center bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm ${className}`}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[--color-brand]"></div>
           <p className="mt-2 text-neutral-600">Loading...</p>
@@ -108,9 +108,9 @@ export default function DataTable<T extends Record<string, any>>({
 
   return (
     <div className={`h-full flex flex-col bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm ${className}`}>
-      {/* Fixed Search Bar */}
+      {/* Fixed Search Bar - Only show if searchable is true */}
       {searchable && (
-        <div className="flex-none p-4 border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex-shrink-0 p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={16} />
             <input
@@ -125,94 +125,120 @@ export default function DataTable<T extends Record<string, any>>({
         </div>
       )}
 
-      {/* Scrollable Table Container */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        <table className="w-full">
-          <thead className="bg-neutral-50 dark:bg-neutral-800 sticky top-0 z-10">
-            <tr>
-              {columns.map((column, index) => (
-                <th
-                  key={index}
-                  className={`px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider
-                    ${column.sortable ? 'cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700' : ''}
-                    ${column.width ? '' : 'min-w-0'}`}
-                  style={column.width ? { width: column.width, minWidth: column.width } : {}}
-                  onClick={column.sortable ? () => handleSort(String(column.key)) : undefined}
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="truncate">{column.label}</span>
-                    {column.sortable && sortConfig?.key === column.key && (
-                      <span className="text-[--color-brand] flex-shrink-0">
-                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
-              {actions && actions.length > 0 && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-32">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-            {sortedData.length === 0 ? (
+      {/* Table Container - Flexible height with proper scrolling */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Fixed Table Header */}
+        <div className="flex-shrink-0 bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+          <table className="w-full">
+            <thead>
               <tr>
-                <td
-                  colSpan={columns.length + (actions ? 1 : 0)}
-                  className="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400"
-                >
-                  {emptyMessage}
-                </td>
+                {columns.map((column, index) => (
+                  <th
+                    key={index}
+                    className={`px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider
+                      ${column.sortable ? 'cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700' : ''}
+                      ${column.width ? '' : 'min-w-0'}`}
+                    style={column.width ? { width: column.width, minWidth: column.width } : {}}
+                    onClick={column.sortable ? () => handleSort(String(column.key)) : undefined}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="truncate">{column.label}</span>
+                      {column.sortable && sortConfig?.key === column.key && (
+                        <span className="text-[--color-brand] flex-shrink-0">
+                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                ))}
+                {actions && actions.length > 0 && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider w-32">
+                    Actions
+                  </th>
+                )}
               </tr>
-            ) : (
-              sortedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                  {columns.map((column, colIndex) => (
-                    <td 
-                      key={colIndex} 
-                      className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
-                      style={column.width ? { width: column.width, minWidth: column.width } : {}}
-                    >
-                      <div className="min-w-0">
-                        {getCellValue(row, column)}
-                      </div>
-                    </td>
-                  ))}
-                  {actions && actions.length > 0 && (
-                    <td className="px-4 py-3 text-sm w-32">
-                      <div className="flex gap-1 flex-wrap">
-                        {actions.map((action, actionIndex) => (
-                          <Button
-                            key={actionIndex}
-                            onClick={() => action.onClick(row)}
-                            className={`btn-sm whitespace-nowrap ${
-                              action.variant === 'danger' ? 'btn-danger' :
-                              action.variant === 'secondary' ? 'btn-secondary' :
-                              'btn-primary'
-                            }`}
-                            disabled={action.disabled?.(row)}
-                            title={action.label}
-                          >
-                            {action.icon && <span className="mr-1">{action.icon}</span>}
-                            <span className="hidden sm:inline">{action.label}</span>
-                            <span className="sm:hidden">{action.icon}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </td>
-                  )}
+            </thead>
+          </table>
+        </div>
+
+        {/* Scrollable Table Body */}
+        <div className="flex-1 overflow-auto">
+          <table className="w-full">
+            {/* Invisible header for column alignment */}
+            <thead className="invisible">
+              <tr>
+                {columns.map((column, index) => (
+                  <th
+                    key={index}
+                    className="px-4 py-3"
+                    style={column.width ? { width: column.width, minWidth: column.width } : {}}
+                  >
+                    {column.label}
+                  </th>
+                ))}
+                {actions && actions.length > 0 && (
+                  <th className="px-4 py-3 w-32">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {sortedData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columns.length + (actions ? 1 : 0)}
+                    className="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400"
+                  >
+                    {emptyMessage}
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                sortedData.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                    {columns.map((column, colIndex) => (
+                      <td 
+                        key={colIndex} 
+                        className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
+                        style={column.width ? { width: column.width, minWidth: column.width } : {}}
+                      >
+                        <div className="min-w-0">
+                          {getCellValue(row, column)}
+                        </div>
+                      </td>
+                    ))}
+                    {actions && actions.length > 0 && (
+                      <td className="px-4 py-3 text-sm w-32">
+                        <div className="flex gap-1 flex-wrap">
+                          {actions.map((action, actionIndex) => (
+                            <Button
+                              key={actionIndex}
+                              onClick={() => action.onClick(row)}
+                              className={`btn-sm whitespace-nowrap ${
+                                action.variant === 'danger' ? 'btn-danger' :
+                                action.variant === 'secondary' ? 'btn-secondary' :
+                                'btn-primary'
+                              }`}
+                              disabled={action.disabled?.(row)}
+                              title={action.label}
+                            >
+                              {action.icon && <span className="mr-1">{action.icon}</span>}
+                              <span className="hidden sm:inline">{action.label}</span>
+                              <span className="sm:hidden">{action.icon}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Fixed Pagination */}
       {pagination && (
-        <div className="flex-none px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between bg-neutral-50 dark:bg-neutral-800">
+        <div className="flex-shrink-0 px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between bg-neutral-50 dark:bg-neutral-800">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Page {pagination.currentPage} of {pagination.totalPages}
           </p>

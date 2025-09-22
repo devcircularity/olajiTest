@@ -10,7 +10,6 @@ import { Edit, Trash2, UserPlus, ToggleLeft, ToggleRight, Shield } from "lucide-
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [pagination, setPagination] = useState({
@@ -24,7 +23,6 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers();
-    loadStats();
   }, [selectedRole]);
 
   const loadUsers = async (page = 1) => {
@@ -50,15 +48,6 @@ export default function UsersPage() {
     }
   };
 
-  const loadStats = async () => {
-    try {
-      const data = await userService.getUserStats();
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to load stats:', error);
-    }
-  };
-
   const handleToggleStatus = async (user: User) => {
     if (user.id === currentUser?.user_id) {
       alert("You cannot deactivate your own account");
@@ -68,7 +57,6 @@ export default function UsersPage() {
     try {
       await userService.toggleUserStatus(user.id);
       loadUsers(pagination.currentPage);
-      loadStats();
     } catch (error) {
       console.error('Failed to toggle user status:', error);
     }
@@ -84,7 +72,6 @@ export default function UsersPage() {
       try {
         await userService.deactivateUser(user.id);
         loadUsers(pagination.currentPage);
-        loadStats();
       } catch (error) {
         console.error('Failed to deactivate user:', error);
         alert('Failed to deactivate user. You may need super admin privileges for this action.');
@@ -101,7 +88,6 @@ export default function UsersPage() {
       await userService.updateUserRoles(userId, { roles });
       setEditingUser(null);
       loadUsers(pagination.currentPage);
-      loadStats();
     } catch (error) {
       console.error('Failed to update user roles:', error);
       alert('Failed to update user roles. Check your permissions.');
@@ -252,28 +238,6 @@ export default function UsersPage() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card p-4">
-              <h3 className="text-sm font-medium text-neutral-600 mb-1">Total Users</h3>
-              <p className="text-2xl font-bold">{stats.total_users}</p>
-            </div>
-            <div className="card p-4">
-              <h3 className="text-sm font-medium text-neutral-600 mb-1">Active Users</h3>
-              <p className="text-2xl font-bold text-green-600">{stats.active_users}</p>
-            </div>
-            <div className="card p-4">
-              <h3 className="text-sm font-medium text-neutral-600 mb-1">New This Week</h3>
-              <p className="text-2xl font-bold text-blue-600">{stats.new_users_this_week}</p>
-            </div>
-            <div className="card p-4">
-              <h3 className="text-sm font-medium text-neutral-600 mb-1">New This Month</h3>
-              <p className="text-2xl font-bold text-purple-600">{stats.new_users_this_month}</p>
-            </div>
-          </div>
-        )}
-
         {/* Role Filter */}
         <div className="card p-4">
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
@@ -331,7 +295,6 @@ export default function UsersPage() {
           onSave={(userData) => {
             userService.createUser(userData).then(() => {
               loadUsers();
-              loadStats();
               setShowCreateUser(false);
             }).catch(error => {
               console.error('Failed to create user:', error);

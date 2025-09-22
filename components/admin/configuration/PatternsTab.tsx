@@ -1,5 +1,5 @@
 // app/admin/configuration/components/PatternsTab.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Info, Edit, Trash2, Eye } from "lucide-react";
 import { intentConfigService, IntentPattern, IntentConfigVersion } from "@/services/intentConfig";
 import Button from "@/components/ui/Button";
@@ -60,6 +60,33 @@ export default function PatternsTab({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterHandler, setFilterHandler] = useState<string>('');
   const [filterIntent, setFilterIntent] = useState<string>('');
+  const [suggestionContext, setSuggestionContext] = useState<any>(null);
+
+  // Check for URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    const fromSuggestion = urlParams.get('from_suggestion');
+    
+    if (action === 'add_new' && fromSuggestion) {
+      const suggestionData = {
+        suggestionId: fromSuggestion,
+        handler: urlParams.get('suggested_handler') || '',
+        intent: urlParams.get('suggested_intent') || '',
+        pattern: urlParams.get('suggested_pattern') || '',
+        title: urlParams.get('reference_title') || ''
+      };
+      
+      setSuggestionContext(suggestionData);
+      
+      // Auto-trigger add pattern with pre-populated data
+      handleAddPatternFromSuggestion(suggestionData);
+      
+      // Clean up URL parameters
+      const newUrl = window.location.pathname + '?tab=patterns';
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const filteredPatterns = patterns.filter(pattern => {
     const matchesSearch = !searchTerm || 
@@ -91,6 +118,26 @@ export default function PatternsTab({
         created_at: '',
         updated_at: '',
         phrases: ['']
+      } as EnhancedIntentPattern,
+      isNew: true
+    });
+  };
+
+  const handleAddPatternFromSuggestion = (suggestionData: any) => {
+    setEditingItem({
+      type: 'pattern',
+      item: {
+        id: '',
+        handler: suggestionData.handler,
+        intent: suggestionData.intent,
+        kind: 'positive',
+        pattern: suggestionData.pattern,
+        priority: 100,
+        enabled: true,
+        scope_school_id: undefined,
+        created_at: '',
+        updated_at: '',
+        phrases: suggestionData.pattern ? [] : [''] // If pattern exists, don't add phrases initially
       } as EnhancedIntentPattern,
       isNew: true
     });
@@ -233,9 +280,37 @@ export default function PatternsTab({
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Version Selector and Filters - Mobile responsive */}
-      <div className="card p-3 sm:p-4">
+    <div className="h-full flex flex-col">
+      {/* Suggestion Context Banner - Fixed height */}
+      {suggestionContext && (
+        <div className="card p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-semibold text-green-800 dark:text-green-200">
+                  Creating Pattern from Implementation Suggestion
+                </h4>
+                <p className="text-xs sm:text-sm text-green-700 dark:text-green-300">
+                  Reference: {suggestionContext.title}
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  The form below has been pre-populated with suggested values. Review and adjust as needed.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setSuggestionContext(null)}
+              className="text-green-600 hover:text-green-800 text-xs"
+            >
+              <Search size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Version Selector and Filters - Fixed height */}
+      <div className="card p-3 sm:p-4 flex-shrink-0">
         <div className="flex flex-col lg:flex-row lg:flex-wrap gap-3 lg:gap-4 lg:items-center">
           <div className="min-w-0">
             <label className="block text-xs sm:text-sm font-medium mb-1">Configuration Version</label>
@@ -313,31 +388,18 @@ export default function PatternsTab({
         </div>
       </div>
 
-      {/* Info card for patterns showing phrase support */}
-      <div className="card p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <div className="flex items-start gap-2">
-          <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <h4 className="text-xs sm:text-sm font-semibold text-blue-800 dark:text-blue-200">
-              Phrase-Friendly Patterns
-            </h4>
-            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
-              Patterns now support friendly phrases like "show student details" that are automatically converted to regex. 
-              You can create patterns using natural language instead of complex regex expressions.
-            </p>
-          </div>
-        </div>
+      {/* Data Table - Constrained height container with proper scrolling */}
+      <div className="flex-1 min-h-0 max-h-[70vh] p-3 sm:p-4">
+        <DataTable
+          data={filteredPatterns}
+          columns={patternColumns}
+          actions={patternActions}
+          loading={loading}
+          searchable={false} // Disable built-in search since we have external search
+          emptyMessage="No patterns found"
+          className="h-full max-h-full"
+        />
       </div>
-
-      {/* Data Table */}
-      <DataTable
-        data={filteredPatterns}
-        columns={patternColumns}
-        actions={patternActions}
-        loading={loading}
-        emptyMessage="No patterns found"
-        className="overflow-x-auto"
-      />
 
       {/* Edit Modal */}
       {editingItem && editingItem.type === 'pattern' && (
@@ -346,8 +408,12 @@ export default function PatternsTab({
           availableHandlers={availableHandlers}
           availableIntents={availableIntents}
           onSave={onSaveItem}
-          onClose={() => setEditingItem(null)}
+          onClose={() => {
+            setEditingItem(null);
+            setSuggestionContext(null); // Clear context when closing
+          }}
           onChange={setEditingItem}
+          suggestionContext={suggestionContext}
         />
       )}
     </div>
