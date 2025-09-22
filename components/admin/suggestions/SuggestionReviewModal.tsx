@@ -16,6 +16,15 @@ interface EnhancedSuggestion extends Suggestion {
   assistant_response?: string;
 }
 
+// Define the ActionItemFormData type to match what's expected
+interface ActionItemFormData {
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  implementation_type: 'pattern' | 'template' | 'code_fix' | 'documentation' | 'other';
+  due_date: string;
+}
+
 interface SuggestionReviewModalProps {
   suggestion: EnhancedSuggestion;
   onClose: () => void;
@@ -36,11 +45,11 @@ export function SuggestionReviewModal({
   const [adminAnalysis, setAdminAnalysis] = useState(suggestion.admin_analysis || '');
   const [implementationNotes, setImplementationNotes] = useState(suggestion.implementation_notes || '');
   const [actionItems, setActionItems] = useState<ActionItem[]>(suggestion.action_items || []);
-  const [newActionItem, setNewActionItem] = useState({
+  const [newActionItem, setNewActionItem] = useState<ActionItemFormData>({
     title: '',
     description: '',
-    priority: 'medium' as const,
-    implementation_type: 'other' as const,
+    priority: 'medium',
+    implementation_type: 'other',
     due_date: ''
   });
   const [showAddAction, setShowAddAction] = useState(false);
@@ -101,6 +110,10 @@ export function SuggestionReviewModal({
         console.error('Failed to mark as addressed:', error);
       }
     }
+  };
+
+  const handleNewActionItemChange = (data: ActionItemFormData) => {
+    setNewActionItem(data);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -224,7 +237,7 @@ export function SuggestionReviewModal({
                 newActionItem={newActionItem}
                 completionNotes={completionNotes}
                 onShowAddActionChange={setShowAddAction}
-                onNewActionItemChange={setNewActionItem}
+                onNewActionItemChange={handleNewActionItemChange}
                 onCompletionNotesChange={setCompletionNotes}
                 onAddActionItem={handleAddActionItem}
                 onMarkAddressed={handleMarkAddressed}

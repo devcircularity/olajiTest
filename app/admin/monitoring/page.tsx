@@ -1,4 +1,4 @@
-// app/admin/monitoring/page.tsx - Simplified Table-Only Version
+// app/admin/monitoring/page.tsx - Fixed TypeScript errors
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,10 +16,10 @@ interface ExtendedChatMessage extends ChatMessage {
 
 export default function ChatMonitoringPage() {
   const { user } = useAuth();
-  const [recentMessages, setRecentMessages] = useState<ChatMessage[]>([]);
+  const [recentMessages, setRecentMessages] = useState<ExtendedChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<ExtendedChatMessage | null>(null);
   const [timeRange, setTimeRange] = useState<number>(720); // 1 month default
 
   useEffect(() => {
@@ -42,7 +42,8 @@ export default function ChatMonitoringPage() {
         hours_back: timeRange
       });
       
-      setRecentMessages(messages);
+      // Cast to ExtendedChatMessage[] since we expect the service to return extended data
+      setRecentMessages(messages as ExtendedChatMessage[]);
     } catch (error) {
       console.error('Failed to load monitoring data:', error);
     } finally {
@@ -50,7 +51,7 @@ export default function ChatMonitoringPage() {
     }
   };
 
-  const handleViewConversation = async (message: ChatMessage) => {
+  const handleViewConversation = async (message: ExtendedChatMessage) => {
     try {
       const conversation = await chatMonitoringService.getConversationDetails(message.conversation_id);
       console.log('Conversation details:', conversation);
@@ -123,7 +124,7 @@ export default function ChatMonitoringPage() {
     {
       key: 'rating',
       label: 'Rating',
-      render: (rating: number, message: ChatMessage) => {
+      render: (rating: number, message: ExtendedChatMessage) => {
         if (message.message_type === 'user') return <span className="text-xs sm:text-sm">-</span>;
         if (rating === 1) return <span className="text-green-600 text-sm">👍</span>;
         if (rating === -1) return <span className="text-red-600 text-sm">👎</span>;
@@ -144,7 +145,7 @@ export default function ChatMonitoringPage() {
     {
       key: 'school_name',
       label: 'School',
-      render: (schoolName: string, message: ChatMessage) => {
+      render: (schoolName: string, message: ExtendedChatMessage) => {
         if (schoolName) {
           return (
             <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
