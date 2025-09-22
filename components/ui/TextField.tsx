@@ -1,3 +1,4 @@
+// components/ui/TextField.tsx - Updated based on your existing component
 "use client";
 import clsx from "clsx";
 
@@ -18,6 +19,8 @@ export default function TextField({
   id, label, type = "text", value, onChange, placeholder, required,
   error, helperText, autoComplete
 }: Props) {
+  const hasError = error && error.trim() !== "";
+  
   return (
     <div>
       <label htmlFor={id} className="label">{label}</label>
@@ -29,12 +32,14 @@ export default function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         required={required}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${id}-error` : (helperText ? `${id}-help` : undefined)}
-        className={clsx("input", error && "input-invalid")}
+        aria-invalid={hasError}
+        aria-describedby={hasError ? `${id}-error` : (helperText ? `${id}-help` : undefined)}
+        className={clsx("input", hasError && "input-invalid")}
       />
-      {error ? (
-        <p id={`${id}-error`} role="alert" className="error-text mt-1">{error}</p>
+      {hasError ? (
+        <p id={`${id}-error`} role="alert" aria-live="polite" className="error-text mt-1">
+          {error}
+        </p>
       ) : helperText ? (
         <p id={`${id}-help`} className="helper mt-1">{helperText}</p>
       ) : null}
