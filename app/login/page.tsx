@@ -81,7 +81,9 @@ function LoginForm() {
       </form>
 
       <div className="flex items-center justify-between text-sm mt-4">
-        <Link href="/forgot-password" className="link">Forgot password?</Link>
+        <a href="https://olaji.co" className="link" target="_blank" rel="noopener noreferrer">
+          Forgot password?
+        </a>
         <span className="opacity-80">
           Don't have an account? <Link href="/signup" className="link">Create one</Link>
         </span>
