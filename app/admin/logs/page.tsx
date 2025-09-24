@@ -1,9 +1,10 @@
-// app/admin/logs/page.tsx
+// app/admin/logs/page.tsx - System logs with dynamic header
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import DataTable, { TableColumn } from "@/components/ui/DataTable";
-import { Calendar, Filter, Download } from "lucide-react";
+import { Filter, Download } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface LogEntry {
@@ -28,6 +29,17 @@ export default function LogsPage() {
     start: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Yesterday
     end: new Date().toISOString().split('T')[0] // Today
   });
+
+  // Set page title in header
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'System Logs',
+      subtitle: 'Monitor system activity and troubleshoot issues' 
+    });
+    
+    return () => HeaderTitleBus.send({ type: 'clear' });
+  }, []);
 
   // Mock data for now - replace with actual API call
   useEffect(() => {
@@ -132,8 +144,6 @@ export default function LogsPage() {
     ? logs 
     : logs.filter(log => log.level === selectedLevel);
 
-  // Check permissions directly instead of using canViewLogs to avoid type issues
-  // Only admins and super admins can view logs
   const hasViewLogsPermission = user?.permissions?.is_admin || 
                                user?.permissions?.is_super_admin;
 
@@ -150,14 +160,8 @@ export default function LogsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header - Mobile responsive */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">System Logs</h1>
-          <p className="text-sm sm:text-base text-neutral-600">
-            Monitor system activity and troubleshoot issues
-          </p>
-        </div>
+      {/* Action button aligned to right - title is now in HeaderBar */}
+      <div className="flex justify-end items-center mb-4 sm:mb-6">
         <Button className="btn-secondary flex items-center gap-2 text-sm">
           <Download size={16} />
           <span className="hidden sm:inline">Export Logs</span>

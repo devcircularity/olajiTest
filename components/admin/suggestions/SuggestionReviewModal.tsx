@@ -16,7 +16,6 @@ interface EnhancedSuggestion extends Suggestion {
   assistant_response?: string;
 }
 
-// Define the ActionItemFormData type to match what's expected
 interface ActionItemFormData {
   title: string;
   description: string;
@@ -55,50 +54,78 @@ export function SuggestionReviewModal({
   const [showAddAction, setShowAddAction] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
 
-  // Auto-switch to analysis tab when starting review
   const handleStartReview = () => {
     setReviewMode(true);
     setActiveTab('analysis');
   };
 
-  const handleEnhancedReview = async (status: 'approved' | 'rejected' | 'needs_analysis') => {
+  const handleEnhancedReview = async (status: 'approved' | 'rejected') => {
     try {
+      // First, review the suggestion
       await onReview(suggestion.id, {
         status,
         admin_note: `Status: ${status}`,
         admin_analysis: adminAnalysis,
-        implementation_notes: implementationNotes,
-        create_action_items: actionItems.length > 0,
-        action_items: actionItems.filter(item => !item.id) // Only new items
+        implementation_notes: implementationNotes
       });
+
+      // Then, create all action items that are new (temporary IDs)
+      if (status === 'approved' && actionItems.length > 0) {
+        for (const item of actionItems) {
+          if (item.id.startsWith('temp-')) {
+            await onCreateActionItem(suggestion.id, {
+              title: item.title,
+              description: item.description,
+              priority: item.priority,
+              implementation_type: item.implementation_type,
+              due_date: item.due_date ? new Date(item.due_date).toISOString() : undefined,
+              suggestion_id: suggestion.id
+            });
+          }
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Failed to review suggestion:', error);
     }
   };
 
-  const handleAddActionItem = async () => {
+  const handleAddActionItem = () => {
     if (!newActionItem.title.trim()) return;
 
-    try {
-      await onCreateActionItem(suggestion.id, {
-        ...newActionItem,
-        suggestion_id: suggestion.id,
-        due_date: newActionItem.due_date ? new Date(newActionItem.due_date).toISOString() : undefined
-      });
-      
-      setNewActionItem({
-        title: '',
-        description: '',
-        priority: 'medium',
-        implementation_type: 'other',
-        due_date: ''
-      });
-      setShowAddAction(false);
-      onClose();
-    } catch (error) {
-      console.error('Failed to create action item:', error);
-    }
+    // Create a temporary action item with local ID
+    const tempActionItem: ActionItem = {
+      id: `temp-${Date.now()}`,
+      suggestion_id: suggestion.id,
+      title: newActionItem.title,
+      description: newActionItem.description,
+      priority: newActionItem.priority,
+      implementation_type: newActionItem.implementation_type,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      due_date: newActionItem.due_date || undefined,
+      assigned_to: undefined,
+      completed_at: undefined,
+      created_by: 'current-user', // Will be set by backend
+      created_by_name: 'Current User' // Will be set by backend
+    };
+
+    // Add to local state
+    setActionItems([...actionItems, tempActionItem]);
+    
+    // Reset form
+    setNewActionItem({
+      title: '',
+      description: '',
+      priority: 'medium',
+      implementation_type: 'other',
+      due_date: ''
+    });
+    
+    // Close the form
+    setShowAddAction(false);
   };
 
   const handleMarkAddressed = async () => {
@@ -118,21 +145,21 @@ export function SuggestionReviewModal({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-200 dark:border-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-800';
+      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-800';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-800';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'pattern': return 'bg-blue-100 text-blue-800';
-      case 'template': return 'bg-green-100 text-green-800';
-      case 'code_fix': return 'bg-red-100 text-red-800';
-      case 'documentation': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pattern': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200';
+      case 'template': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200';
+      case 'code_fix': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200';
+      case 'documentation': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200';
     }
   };
 
@@ -145,14 +172,14 @@ export function SuggestionReviewModal({
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 sm:mb-6 gap-3">
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold break-words">{suggestion.title}</h2>
-              <p className="text-xs sm:text-sm text-neutral-600 mt-1">
+              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                 Submitted by {suggestion.created_by_name} on {new Date(suggestion.created_at).toLocaleDateString()}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(suggestion.priority)}`}>
                   {suggestion.priority}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
                   {suggestion.suggestion_type.replace('_', ' ')}
                 </span>
               </div>
@@ -164,7 +191,7 @@ export function SuggestionReviewModal({
 
           {/* Review Mode Indicator */}
           {reviewMode && (
-            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
@@ -180,14 +207,14 @@ export function SuggestionReviewModal({
           {/* Tabs */}
           <div className="border-b border-neutral-200 dark:border-neutral-700 mb-4 sm:mb-6">
             <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto">
-              {['details', 'analysis', 'actions'].map((tab, index) => {
+              {['details', 'analysis', 'actions'].map((tab) => {
                 let tabStatus = '';
                 
                 if (reviewMode) {
                   if (tab === 'details') tabStatus = '✓ Reviewed';
                   else if (tab === 'analysis' && adminAnalysis.trim()) tabStatus = '✓ Complete';
                   else if (tab === 'analysis') tabStatus = '⚠ Required';
-                  else if (tab === 'actions' && suggestion.status !== 'approved') tabStatus = '⏳ After Approval';
+                  else if (tab === 'actions' && actionItems.length > 0) tabStatus = `✓ ${actionItems.length} item${actionItems.length > 1 ? 's' : ''}`;
                 }
                 
                 return (
@@ -196,8 +223,8 @@ export function SuggestionReviewModal({
                     onClick={() => setActiveTab(tab as any)}
                     className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm capitalize whitespace-nowrap ${
                       activeTab === tab
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
                     }`}
                   >
                     {tab}
@@ -256,8 +283,8 @@ export function SuggestionReviewModal({
             implementationNotes={implementationNotes}
             onStartReview={handleStartReview}
             onSwitchToAnalysis={() => setActiveTab('analysis')}
+            onSwitchToActions={() => setActiveTab('actions')}
             onApprove={() => handleEnhancedReview('approved')}
-            onNeedsAnalysis={() => handleEnhancedReview('needs_analysis')}
             onReject={() => handleEnhancedReview('rejected')}
           />
         </div>

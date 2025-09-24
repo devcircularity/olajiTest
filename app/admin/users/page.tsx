@@ -1,6 +1,7 @@
-// app/admin/users/page.tsx
+// app/admin/users/page.tsx - User Management with dynamic header
 "use client";
 import { useState, useEffect } from "react";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import { userService, User, UserStats } from "@/services/user";
 import { useAuth } from "@/contexts/AuthContext";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
@@ -20,6 +21,17 @@ export default function UsersPage() {
   });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
+
+  // Set page title in header
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'User Management',
+      subtitle: 'Manage users and their permissions' 
+    });
+    
+    return () => HeaderTitleBus.send({ type: 'clear' });
+  }, []);
 
   useEffect(() => {
     loadUsers();
@@ -221,14 +233,11 @@ export default function UsersPage() {
     <div className="h-full flex flex-col">
       {/* Fixed Header */}
       <div className="flex-none p-6 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-        {/* Title and Add Button */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">User Management</h1>
-            <p className="text-neutral-600">
-              Manage users and their permissions ({pagination.total} total users)
-            </p>
-          </div>
+        {/* Add User Button and Total Count - Right aligned since title is in HeaderBar */}
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-sm text-neutral-600">
+            {pagination.total} total users
+          </p>
           <Button 
             onClick={() => setShowCreateUser(true)}
             className="flex items-center gap-2 text-sm whitespace-nowrap"

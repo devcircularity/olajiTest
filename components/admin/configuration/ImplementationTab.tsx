@@ -1,8 +1,9 @@
-// components/admin/configuration/ImplementationTab.tsx
+// components/admin/configuration/ImplementationTab.tsx - Without fixed height
 import { useState, useEffect } from "react";
 import { suggestionsService, Suggestion, ActionItem } from "@/services/suggestions";
-import { CheckCircle, Clock, User, AlertTriangle, Wrench, Eye } from "lucide-react";
+import { CheckCircle, Clock, User, AlertTriangle, Wrench, Eye, Plus, ExternalLink, Search } from "lucide-react";
 import Button from "@/components/ui/Button";
+import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import { SuggestionReviewModal } from "@/components/admin/suggestions/SuggestionReviewModal";
 
@@ -12,11 +13,19 @@ interface EnhancedSuggestion extends Suggestion {
   implementation_notes?: string;
 }
 
+interface ImplementationStatus {
+  status: 'needs_items' | 'pending' | 'in_progress' | 'ready';
+  label: string;
+  color: string;
+}
+
 export default function ImplementationTab() {
   const [approvedSuggestions, setApprovedSuggestions] = useState<EnhancedSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSuggestion, setSelectedSuggestion] = useState<EnhancedSuggestion | null>(null);
   const [showFullReview, setShowFullReview] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
     loadImplementationData();
@@ -25,15 +34,11 @@ export default function ImplementationTab() {
   const loadImplementationData = async () => {
     try {
       setLoading(true);
-      
-      // Load approved suggestions
       const suggestionsResponse = await suggestionsService.getSuggestions({
         status: 'approved',
-        limit: 50
+        limit: 100
       });
-      
       setApprovedSuggestions(suggestionsResponse.suggestions);
-      
     } catch (error) {
       console.error('Failed to load implementation data:', error);
     } finally {
@@ -41,40 +46,36 @@ export default function ImplementationTab() {
     }
   };
 
-  const handleQuickImplement = async (suggestion: EnhancedSuggestion) => {
-    try {
-      // Auto-implement the suggestion
-      await suggestionsService.implementSuggestion(suggestion.id);
-      
-      // Mark as addressed
-      await suggestionsService.markSuggestionAddressed(
-        suggestion.id, 
-        `Auto-implemented: ${suggestion.suggestion_type === 'regex_pattern' ? 'Pattern' : 'Template'} created in candidate configuration`
-      );
-      
-      loadImplementationData();
-      setSelectedSuggestion(null); // Close modal
-      alert('Suggestion implemented successfully! Check the candidate configuration version.');
-    } catch (error) {
-      console.error('Failed to implement suggestion:', error);
-      alert('Failed to implement suggestion. Please try manual implementation.');
-    }
-  };
-
-  const getImplementationStatus = (suggestion: EnhancedSuggestion) => {
+  const getImplementationStatus = (suggestion: EnhancedSuggestion): ImplementationStatus => {
     if (!suggestion.action_items || suggestion.action_items.length === 0) {
-      return { status: 'needs_items', label: 'Needs Action Items', color: 'bg-amber-100 text-amber-800' };
+      return { 
+        status: 'needs_items', 
+        label: 'Needs Action Items', 
+        color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' 
+      };
     }
     
     const completedItems = suggestion.action_items.filter(item => item.status === 'completed');
     const inProgressItems = suggestion.action_items.filter(item => item.status === 'in_progress');
     
     if (completedItems.length === suggestion.action_items.length) {
-      return { status: 'ready', label: 'Ready to Complete', color: 'bg-green-100 text-green-800' };
+      return { 
+        status: 'ready', 
+        label: 'Ready to Complete', 
+        color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' 
+      };
     } else if (inProgressItems.length > 0) {
-      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+      return { 
+        status: 'in_progress', 
+        label: 'In Progress', 
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' 
+      };
     } else {
-      return { status: 'pending', label: 'Pending Start', color: 'bg-gray-100 text-gray-800' };
+      return { 
+        status: 'pending', 
+        label: 'Pending Start', 
+        color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200' 
+      };
     }
   };
 
@@ -83,24 +84,34 @@ export default function ImplementationTab() {
            (suggestion.suggestion_type === 'prompt_template' && suggestion.template_text);
   };
 
+  const handleQuickImplement = async (suggestion: EnhancedSuggestion) => {
+    if (!confirm(`Quick implement this ${suggestion.suggestion_type.replace('_', ' ')}?`)) {
+      return;
+    }
+
+    try {
+      await suggestionsService.implementSuggestion(suggestion.id);
+      await suggestionsService.markSuggestionAddressed(
+        suggestion.id, 
+        `Auto-implemented: ${suggestion.suggestion_type === 'regex_pattern' ? 'Pattern' : 'Template'} created in candidate configuration`
+      );
+      loadImplementationData();
+      setSelectedSuggestion(null);
+      alert('Suggestion implemented successfully! Check the candidate configuration version.');
+    } catch (error) {
+      console.error('Failed to implement suggestion:', error);
+      alert('Failed to implement suggestion. Please try manual implementation.');
+    }
+  };
+
   const handleManualConfig = (suggestion: EnhancedSuggestion) => {
-    // Navigate to configuration with context to add new pattern/template
     const baseUrl = '/admin/configuration';
-    
-    // Debug the suggestion type to see what we're getting
-    console.log('Suggestion type:', suggestion.suggestion_type);
-    console.log('Has pattern:', !!suggestion.pattern);
-    console.log('Has template_text:', !!suggestion.template_text);
-    console.log('Full suggestion object:', suggestion);
-    
-    // For now, always go to patterns to test the workflow
-    const tab = 'patterns';
+    const tab = suggestion.suggestion_type === 'regex_pattern' ? 'patterns' : 'templates';
     
     const params = new URLSearchParams({
       tab,
-      action: 'add_new', // Indicates we want to add a new item
+      action: 'add_new',
       from_suggestion: suggestion.id,
-      // Pre-populate form data
       ...(suggestion.pattern && { suggested_pattern: suggestion.pattern }),
       ...(suggestion.template_text && { suggested_template: suggestion.template_text }),
       ...(suggestion.handler && { suggested_handler: suggestion.handler }),
@@ -108,7 +119,6 @@ export default function ImplementationTab() {
       ...(suggestion.title && { reference_title: suggestion.title })
     });
     
-    console.log('Navigating to tab:', tab);
     window.location.href = `${baseUrl}?${params.toString()}`;
   };
 
@@ -119,19 +129,109 @@ export default function ImplementationTab() {
 
   const handleReviewModalClose = () => {
     setShowFullReview(false);
-    // Don't clear selectedSuggestion here so the Implementation Modal can reopen
-    loadImplementationData(); // Refresh data in case of changes
-  };
-
-  const handleImplementationModalClose = () => {
     setSelectedSuggestion(null);
-    setShowFullReview(false);
+    loadImplementationData();
   };
 
-  // Review modal handlers
+  const filteredSuggestions = approvedSuggestions.filter(suggestion => {
+    const matchesStatus = filterStatus === 'all' || getImplementationStatus(suggestion).status === filterStatus;
+    const matchesSearch = !searchTerm || 
+      suggestion.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      suggestion.handler?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      suggestion.intent?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      suggestion.created_by_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesStatus && matchesSearch;
+  });
+
+  const columns: TableColumn<EnhancedSuggestion>[] = [
+    {
+      key: 'title',
+      label: 'Suggestion',
+      render: (title: string, suggestion: EnhancedSuggestion) => (
+        <div className="min-w-0">
+          <div className="font-medium text-sm truncate">{title}</div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              suggestion.suggestion_type === 'regex_pattern' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' :
+              suggestion.suggestion_type === 'prompt_template' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' :
+              'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200'
+            }`}>
+              {suggestion.suggestion_type.replace('_', ' ')}
+            </span>
+            {suggestion.action_items && suggestion.action_items.length > 0 && (
+              <span className="text-xs text-neutral-500">
+                {suggestion.action_items.length} action item{suggestion.action_items.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'created_by_name',
+      label: 'Submitted By',
+      render: (name: string) => (
+        <div className="flex items-center gap-1 text-sm">
+          <User size={12} className="text-neutral-400" />
+          <span className="truncate">{name}</span>
+        </div>
+      ),
+      width: '150px',
+    },
+    {
+      key: 'created_at',
+      label: 'Date',
+      render: (date: string) => (
+        <span className="text-sm">{new Date(date).toLocaleDateString()}</span>
+      ),
+      width: '120px',
+    },
+    {
+      key: 'handler',
+      label: 'Handler',
+      render: (handler: string) => (
+        <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+          {handler}
+        </code>
+      ),
+      width: '120px',
+    },
+    {
+      key: 'intent',
+      label: 'Intent',
+      render: (intent: string) => (
+        <span className="text-sm font-medium">{intent}</span>
+      ),
+      width: '120px',
+    },
+    {
+      key: 'id',
+      label: 'Status',
+      render: (_, suggestion: EnhancedSuggestion) => {
+        const status = getImplementationStatus(suggestion);
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+            {status.label}
+          </span>
+        );
+      },
+      width: '150px',
+    },
+  ];
+
+  const actions: TableAction<EnhancedSuggestion>[] = [
+    {
+      label: 'View',
+      icon: <Eye size={14} />,
+      onClick: setSelectedSuggestion,
+      variant: 'secondary',
+    }
+  ];
+
   const handleReview = async (suggestionId: string, reviewData: any) => {
     try {
-      await suggestionsService.reviewSuggestion(suggestionId, reviewData);
+      await suggestionsService.reviewSuggestionEnhanced(suggestionId, reviewData);
       handleReviewModalClose();
     } catch (error) {
       console.error('Failed to review suggestion:', error);
@@ -142,7 +242,7 @@ export default function ImplementationTab() {
   const handleCreateActionItem = async (suggestionId: string, actionItem: any) => {
     try {
       await suggestionsService.createActionItem(suggestionId, actionItem);
-      handleReviewModalClose();
+      loadImplementationData();
     } catch (error) {
       console.error('Failed to create action item:', error);
       throw error;
@@ -159,143 +259,111 @@ export default function ImplementationTab() {
     }
   };
 
-  if (loading) {
-    return <div className="p-3 sm:p-6 text-center text-sm">Loading implementation queue...</div>;
-  }
-
   return (
     <>
-      <div className="h-full flex flex-col">
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2"
-             style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(163 163 163) transparent' }}>
-          
-          {/* Implementation Queue Header */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div>
-              <h3 className="font-semibold text-lg sm:text-xl">Implementation Queue</h3>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Manage approved suggestions and track implementation progress
-              </p>
-            </div>
+      <div className="space-y-4">
+        {/* Single Row Filter and Search Bar */}
+        <div className="card p-3 sm:p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
+            {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-                {approvedSuggestions.length} approved suggestions
-              </span>
-              <Button
-                onClick={loadImplementationData}
-                className="btn-secondary text-xs sm:text-sm"
+              <label className="text-sm font-medium whitespace-nowrap">Filter by Status:</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="input w-48 text-sm"
               >
-                Refresh
-              </Button>
+                <option value="all">All ({approvedSuggestions.length})</option>
+                <option value="needs_items">
+                  Needs Action Items ({approvedSuggestions.filter(s => getImplementationStatus(s).status === 'needs_items').length})
+                </option>
+                <option value="pending">
+                  Pending Start ({approvedSuggestions.filter(s => getImplementationStatus(s).status === 'pending').length})
+                </option>
+                <option value="in_progress">
+                  In Progress ({approvedSuggestions.filter(s => getImplementationStatus(s).status === 'in_progress').length})
+                </option>
+                <option value="ready">
+                  Ready to Complete ({approvedSuggestions.filter(s => getImplementationStatus(s).status === 'ready').length})
+                </option>
+              </select>
             </div>
-          </div>
 
-          {/* Implementation Queue Content */}
-          <div className="card p-3 sm:p-4 flex-1 min-h-0">
-            {approvedSuggestions.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 text-neutral-500 dark:text-neutral-400">
-                <CheckCircle size={48} className="sm:size-64 mx-auto mb-4 opacity-50" />
-                <h4 className="text-lg sm:text-xl font-medium mb-2">No approved suggestions pending implementation</h4>
-                <p className="text-sm">Great job keeping up with the queue!</p>
-                <p className="text-xs mt-2">New approved suggestions will appear here automatically.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {approvedSuggestions.map((suggestion) => {
-                  const implementationStatus = getImplementationStatus(suggestion);
-                  
-                  return (
-                    <div key={suggestion.id} className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 sm:p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
-                      <div className="flex items-start sm:items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-medium text-sm sm:text-base mb-1">{suggestion.title}</h4>
-                          <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                            <div className="flex items-center gap-1">
-                              <User size={10} />
-                              <span className="truncate max-w-32 sm:max-w-none">{suggestion.created_by_name}</span>
-                            </div>
-                            <span className="hidden sm:inline">•</span>
-                            <span className="hidden sm:inline">{new Date(suggestion.created_at).toLocaleDateString()}</span>
-                            <span className="hidden sm:inline">•</span>
-                            <span className="capitalize">{suggestion.suggestion_type.replace('_', ' ')}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${implementationStatus.color}`}>
-                            <span className="hidden sm:inline">{implementationStatus.label}</span>
-                            <span className="sm:hidden">
-                              {implementationStatus.status === 'needs_items' ? 'Needs Items' :
-                               implementationStatus.status === 'ready' ? 'Ready' :
-                               implementationStatus.status === 'in_progress' ? 'In Progress' : 'Pending'}
-                            </span>
-                          </span>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => setSelectedSuggestion(suggestion)}
-                              className="btn-secondary flex items-center gap-1 sm:gap-2 text-xs"
-                            >
-                              <Eye size={12} />
-                              <span className="hidden sm:inline">View Details</span>
-                              <span className="sm:hidden">View</span>
-                            </Button>
-                            
-                            {canQuickImplement(suggestion) && (
-                              <Button
-                                onClick={() => handleQuickImplement(suggestion)}
-                                className="flex items-center gap-1 sm:gap-2 text-xs"
-                              >
-                                <Wrench size={12} />
-                                <span className="hidden sm:inline">Quick Implement</span>
-                                <span className="sm:hidden">Implement</span>
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {/* Search Bar - Flexible width */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search by title, handler, intent, or submitter..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg 
+                           bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-[--color-brand] focus:border-transparent text-sm"
+              />
+            </div>
+            
+            {/* Refresh Button */}
+            <Button
+              onClick={loadImplementationData}
+              className="btn-secondary text-sm whitespace-nowrap"
+            >
+              Refresh Queue
+            </Button>
           </div>
         </div>
+
+        {/* Table */}
+        <DataTable
+          data={filteredSuggestions}
+          columns={columns}
+          actions={actions}
+          loading={loading}
+          searchable={false}
+          emptyMessage={
+            filterStatus === 'all' && !searchTerm
+              ? "No approved suggestions pending implementation"
+              : `No suggestions found matching your filters`
+          }
+        />
       </div>
 
       {/* Implementation Details Modal */}
       <Modal
         isOpen={selectedSuggestion !== null && !showFullReview}
-        onClose={handleImplementationModalClose}
+        onClose={() => setSelectedSuggestion(null)}
         title={selectedSuggestion?.title || ''}
         size="xl"
       >
         {selectedSuggestion && (
           <div className="space-y-6">
-            {/* Suggestion Header Info */}
             <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-lg">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 mb-2">
-                <div className="flex items-center gap-1">
-                  <User size={14} />
-                  <span>{selectedSuggestion.created_by_name}</span>
-                </div>
-                <span>•</span>
-                <span>{new Date(selectedSuggestion.created_at).toLocaleDateString()}</span>
-                <span>•</span>
-                <span className="capitalize">{selectedSuggestion.suggestion_type.replace('_', ' ')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>Status:</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImplementationStatus(selectedSuggestion).color}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getImplementationStatus(selectedSuggestion).color}`}>
                   {getImplementationStatus(selectedSuggestion).label}
+                </span>
+                <span className="text-sm text-neutral-500">•</span>
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {selectedSuggestion.created_by_name}
+                </span>
+                <span className="text-sm text-neutral-500">•</span>
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {new Date(selectedSuggestion.created_at).toLocaleDateString()}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Analysis & Implementation */}
               <div className="space-y-4">
-                <h5 className="font-semibold text-lg">Analysis & Implementation</h5>
+                <h5 className="font-semibold">Implementation Details</h5>
+                
+                {selectedSuggestion.description && (
+                  <div>
+                    <h6 className="font-medium text-sm mb-2">Description:</h6>
+                    <div className="bg-white dark:bg-neutral-800 p-3 rounded-lg border text-sm">
+                      {selectedSuggestion.description}
+                    </div>
+                  </div>
+                )}
                 
                 {selectedSuggestion.admin_analysis && (
                   <div>
@@ -306,122 +374,85 @@ export default function ImplementationTab() {
                   </div>
                 )}
                 
-                {selectedSuggestion.implementation_notes && (
-                  <div>
-                    <h6 className="font-medium text-sm mb-2">Implementation Notes:</h6>
-                    <div className="bg-white dark:bg-neutral-800 p-3 rounded-lg border text-sm">
-                      {selectedSuggestion.implementation_notes}
-                    </div>
-                  </div>
-                )}
-                
                 {(selectedSuggestion.pattern || selectedSuggestion.template_text) && (
                   <div>
                     <h6 className="font-medium text-sm mb-2">
                       Proposed {selectedSuggestion.suggestion_type === 'regex_pattern' ? 'Pattern' : 'Template'}:
                     </h6>
-                    <code className="block bg-white dark:bg-neutral-800 p-3 rounded-lg border text-sm overflow-x-auto">
+                    <code className="block bg-white dark:bg-neutral-800 p-3 rounded-lg border text-sm overflow-x-auto font-mono">
                       {selectedSuggestion.pattern || selectedSuggestion.template_text}
                     </code>
                   </div>
                 )}
               </div>
               
-              {/* Action Items */}
               <div className="space-y-4">
-                <h5 className="font-semibold text-lg">Action Items</h5>
+                <div className="flex justify-between items-center">
+                  <h5 className="font-semibold">Action Items</h5>
+                  <Button
+                    onClick={() => handleFullReview(selectedSuggestion)}
+                    className="text-xs btn-secondary flex items-center gap-1"
+                  >
+                    <Plus size={12} />
+                    Add Items
+                  </Button>
+                </div>
                 
                 {selectedSuggestion.action_items && selectedSuggestion.action_items.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {selectedSuggestion.action_items.map((item) => (
-                      <div key={item.id} className="bg-white dark:bg-neutral-800 p-4 rounded-lg border">
-                        <div className="flex items-start justify-between mb-2">
+                      <div key={item.id} className="bg-white dark:bg-neutral-800 p-3 rounded-lg border">
+                        <div className="flex items-start justify-between mb-1">
                           <h6 className="font-medium text-sm">{item.title}</h6>
-                          <span className={`px-2 py-1 rounded-full text-xs ml-2 ${
-                            item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            item.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
+                          <span className={`px-2 py-0.5 rounded-full text-xs ml-2 whitespace-nowrap ${
+                            item.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' :
+                            item.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200'
                           }`}>
                             {item.status.replace('_', ' ')}
                           </span>
                         </div>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{item.description}</p>
-                        <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                          <Clock size={10} />
-                          <span>Created {new Date(item.created_at).toLocaleDateString()}</span>
-                          {item.due_date && (
-                            <>
-                              <span>•</span>
-                              <span>Due {new Date(item.due_date).toLocaleDateString()}</span>
-                            </>
-                          )}
-                        </div>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{item.description}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-neutral-500 dark:text-neutral-400 bg-white dark:bg-neutral-800 rounded-lg border">
-                    <AlertTriangle size={32} className="mx-auto mb-3 opacity-50" />
-                    <p className="font-medium mb-1">No action items created yet</p>
-                    <p className="text-sm mb-4">Create action items to track implementation progress</p>
-                    <Button
-                      onClick={() => window.location.href = `/admin/suggestions?status=approved#${selectedSuggestion.id}`}
-                      className="btn-secondary text-sm"
-                    >
-                      Add Action Items
-                    </Button>
+                  <div className="text-center py-6 text-neutral-500 bg-white dark:bg-neutral-800 rounded-lg border">
+                    <AlertTriangle size={24} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No action items yet</p>
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-              <Button
-                onClick={() => handleFullReview(selectedSuggestion)}
-                className="btn-secondary"
-              >
-                Full Review
-              </Button>
-              
+            <div className="flex gap-3 pt-4 border-t">
               {canQuickImplement(selectedSuggestion) && (
-                <Button
-                  onClick={() => handleQuickImplement(selectedSuggestion)}
-                  className=""
-                >
-                  Implement Now
+                <Button onClick={() => handleQuickImplement(selectedSuggestion)}>
+                  <Wrench size={16} className="mr-2" />
+                  Quick Implement
                 </Button>
               )}
-              
-              <Button
-                onClick={() => handleManualConfig(selectedSuggestion)}
-                className="btn-secondary"
-              >
-                Manual Config
+              <Button onClick={() => handleManualConfig(selectedSuggestion)} className="btn-secondary">
+                <ExternalLink size={16} className="mr-2" />
+                Manual Configuration
+              </Button>
+              <Button onClick={() => handleFullReview(selectedSuggestion)} className="btn-secondary">
+                Full Review
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Full Review Modal with higher z-index */}
+      {/* Full Review Modal */}
       {showFullReview && selectedSuggestion && (
-        <Modal
-          isOpen={true}
+        <SuggestionReviewModal
+          suggestion={selectedSuggestion}
           onClose={handleReviewModalClose}
-          title=""
-          size="full"
-          showCloseButton={false}
-          zIndex={10000}
-        >
-          <SuggestionReviewModal
-            suggestion={selectedSuggestion}
-            onClose={handleReviewModalClose}
-            onReview={handleReview}
-            onCreateActionItem={handleCreateActionItem}
-            onMarkAddressed={handleMarkAddressed}
-          />
-        </Modal>
+          onReview={handleReview}
+          onCreateActionItem={handleCreateActionItem}
+          onMarkAddressed={handleMarkAddressed}
+        />
       )}
     </>
   );

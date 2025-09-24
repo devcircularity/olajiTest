@@ -32,7 +32,7 @@ export function ActionItemForm({
   };
 
   return (
-    <div className="border border-neutral-200 rounded-lg p-3 sm:p-4 bg-neutral-50">
+    <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-800/50">
       <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Create Action Item</h4>
       <div className="space-y-3 sm:space-y-4">
         <div>
@@ -42,7 +42,7 @@ export function ActionItemForm({
             value={formData.title}
             onChange={(e) => updateField('title', e.target.value)}
             placeholder="e.g., Create pattern for class count queries"
-            className="w-full p-2 border border-neutral-200 rounded text-sm"
+            className="w-full p-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
           />
         </div>
         
@@ -52,7 +52,7 @@ export function ActionItemForm({
             value={formData.description}
             onChange={(e) => updateField('description', e.target.value)}
             placeholder="Detailed description of what needs to be done..."
-            className="w-full p-2 border border-neutral-200 rounded text-sm"
+            className="w-full p-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
             rows={3}
           />
         </div>
@@ -63,7 +63,7 @@ export function ActionItemForm({
             <select
               value={formData.priority}
               onChange={(e) => updateField('priority', e.target.value)}
-              className="w-full p-2 border border-neutral-200 rounded text-sm"
+              className="w-full p-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -77,7 +77,7 @@ export function ActionItemForm({
             <select
               value={formData.implementation_type}
               onChange={(e) => updateField('implementation_type', e.target.value)}
-              className="w-full p-2 border border-neutral-200 rounded text-sm"
+              className="w-full p-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"
             >
               <option value="pattern">Create Pattern</option>
               <option value="template">Create Template</option>
@@ -94,7 +94,7 @@ export function ActionItemForm({
             type="date"
             value={formData.due_date}
             onChange={(e) => updateField('due_date', e.target.value)}
-            className="w-full p-2 border border-neutral-200 rounded text-sm"
+            className="w-full p-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"
           />
         </div>
         

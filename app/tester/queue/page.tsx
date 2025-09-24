@@ -1,9 +1,12 @@
-// app/tester/queue/page.tsx - Updated with suggestion filtering
+// app/tester/queue/page.tsx - Add to existing component
+
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { testerService, ProblematicMessage } from "@/services/tester";
 import { HeaderTitleBus } from "@/components/layout/HeaderBar";
+import { apiClient } from "@/services/api";
+import { EyeOff } from "lucide-react";
 
 // Import components
 import { QueueStatsCards } from "@/components/tester/queue/QueueStatsCards";
@@ -18,12 +21,13 @@ export default function TesterQueuePage() {
   // Data state
   const [messages, setMessages] = useState<ProblematicMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [queueHidden, setQueueHidden] = useState<boolean>(false);
   
   // Filter state
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [selectedIssueType, setSelectedIssueType] = useState<string>('');
   const [selectedTimeframe, setSelectedTimeframe] = useState<number>(30);
-  const [showSuggested, setShowSuggested] = useState<boolean>(false); // NEW: Default to hide handled messages
+  const [showSuggested, setShowSuggested] = useState<boolean>(false);
   
   // Modal state
   const [selectedMessage, setSelectedMessage] = useState<ProblematicMessage | null>(null);
@@ -42,10 +46,17 @@ export default function TesterQueuePage() {
     };
   }, []);
 
+  // Check queue visibility on mount
+  useEffect(() => {
+    checkQueueVisibility();
+  }, []);
+
   // Load data when filters change
   useEffect(() => {
-    loadQueue();
-  }, [selectedPriority, selectedIssueType, selectedTimeframe, showSuggested]); // Added showSuggested
+    if (!queueHidden) {
+      loadQueue();
+    }
+  }, [selectedPriority, selectedIssueType, selectedTimeframe, showSuggested, queueHidden]);
 
   // Update subtitle with message count
   useEffect(() => {
@@ -60,6 +71,15 @@ export default function TesterQueuePage() {
     });
   }, [messages.length, showSuggested]);
 
+  const checkQueueVisibility = async () => {
+    try {
+      const response = await apiClient.get('/api/admin/configuration/settings/hide-tester-queue');
+      setQueueHidden(response.data.hidden);
+    } catch (error) {
+      console.error('Failed to check queue visibility:', error);
+    }
+  };
+
   const loadQueue = async () => {
     try {
       setLoading(true);
@@ -67,7 +87,7 @@ export default function TesterQueuePage() {
       const params = {
         days_back: selectedTimeframe,
         limit: 100,
-        show_suggested: showSuggested, // NEW: Pass the filter
+        show_suggested: showSuggested,
         ...(selectedPriority && { priority: parseInt(selectedPriority) }),
         ...(selectedIssueType && { issue_type: selectedIssueType })
       };
@@ -96,8 +116,6 @@ export default function TesterQueuePage() {
   };
 
   const handleSuggestionSubmitted = () => {
-    // Don't close modal immediately - let the SuggestionModal handle the success state
-    // The modal will close itself after showing success message
     loadQueue();
   };
 
@@ -107,6 +125,7 @@ export default function TesterQueuePage() {
   };
 
   const handleRefresh = () => {
+    checkQueueVisibility();
     loadQueue();
   };
 
@@ -114,13 +133,15 @@ export default function TesterQueuePage() {
     setSelectedPriority('');
     setSelectedIssueType('');
     setSelectedTimeframe(30);
-    setShowSuggested(false); // Reset to hide handled messages
+    setShowSuggested(false);
   };
 
   // Check permissions
   const hasTesterQueuePermission = user?.permissions?.is_tester || 
                                    user?.permissions?.is_admin || 
                                    user?.permissions?.is_super_admin;
+
+  const isAdmin = user?.permissions?.is_admin || user?.permissions?.is_super_admin;
 
   if (!hasTesterQueuePermission) {
     return (
@@ -133,8 +154,53 @@ export default function TesterQueuePage() {
     );
   }
 
+  // app/tester/queue/page.tsx - Continuation
+
+  // Show queue hidden message for non-admin testers
+  if (queueHidden && !isAdmin) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 text-center max-w-2xl mx-auto mt-12">
+          <div className="flex justify-center mb-4">
+            <EyeOff size={48} className="text-blue-600" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2 text-neutral-900 dark:text-neutral-100">
+            Queue Temporarily Unavailable
+          </h2>
+          <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+            The problem queue has been temporarily hidden by an administrator.
+            Please check back later or contact an admin for more information.
+          </p>
+          <button 
+            onClick={handleRefresh}
+            className="btn btn-primary"
+          >
+            Check Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6">
+      {/* Show notice for admins when queue is hidden */}
+      {queueHidden && isAdmin && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-2">
+            <EyeOff size={20} className="text-orange-600" />
+            <div>
+              <p className="font-medium text-orange-900 dark:text-orange-100">
+                Queue Hidden from Testers
+              </p>
+              <p className="text-sm text-orange-700 dark:text-orange-300">
+                You can see this queue because you're an admin. Regular testers cannot access it right now.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Summary */}
       <QueueStatsCards messages={messages} />
 

@@ -1,4 +1,4 @@
-// components/admin/suggestions/SuggestionsDataTable.tsx
+// components/admin/suggestions/SuggestionsDataTable.tsx - FIXED
 import { TableColumn, TableAction } from "@/components/ui/DataTable";
 import DataTable from "@/components/ui/DataTable";
 import { CheckCircle, Clock, Eye, Lightbulb, Plus, X } from "lucide-react";
@@ -158,18 +158,16 @@ export function SuggestionsDataTable({
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <DataTable
-        data={suggestions}
-        columns={columns}
-        actions={actions}
-        loading={loading}
-        searchable
-        searchPlaceholder="Search suggestions..."
-        pagination={pagination}
-        emptyMessage="No suggestions found"
-        className="text-xs sm:text-sm"
-      />
-    </div>
+    <DataTable
+      data={suggestions}
+      columns={columns}
+      actions={actions}
+      loading={loading}
+      searchable
+      searchPlaceholder="Search suggestions..."
+      pagination={pagination}
+      emptyMessage="No suggestions found"
+      className="text-xs sm:text-sm"
+    />
   );
 }

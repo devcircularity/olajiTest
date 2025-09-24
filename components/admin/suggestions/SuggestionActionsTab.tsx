@@ -46,7 +46,7 @@ export function SuggestionActionsTab({
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h3 className="font-semibold text-sm sm:text-base">Action Items</h3>
-        {suggestionStatus === 'approved' && (
+        {(suggestionStatus === 'pending' || suggestionStatus === 'approved') && (
           <Button
             onClick={() => onShowAddActionChange(true)}
             className="btn-secondary flex items-center gap-2 text-sm"
@@ -76,14 +76,14 @@ export function SuggestionActionsTab({
 
       {/* Mark as Addressed */}
       {suggestionStatus === 'approved' && actionItems.some(item => item.status === 'completed') && (
-        <div className="border-t pt-4">
+        <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
           <h4 className="font-medium mb-3 text-sm sm:text-base">Mark Suggestion as Addressed</h4>
           <div className="space-y-3">
             <textarea
               value={completionNotes}
               onChange={(e) => onCompletionNotesChange(e.target.value)}
               placeholder="Describe how this suggestion was addressed..."
-              className="w-full p-3 border border-neutral-200 rounded-lg text-sm"
+              className="w-full p-3 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
               rows={3}
             />
             <Button

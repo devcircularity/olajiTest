@@ -1,9 +1,10 @@
-// app/admin/configuration/page.tsx - Consolidated Configuration Management
+// app/admin/configuration/page.tsx - Complete configuration page
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import { intentConfigService, IntentConfigVersion } from "@/services/intentConfig";
-import { RefreshCw, AlertCircle, Plus, Play, Archive } from "lucide-react";
+import { RefreshCw, Plus, Play, Archive } from "lucide-react";
 import Button from "@/components/ui/Button";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ConfigurationOverview from "@/components/admin/configuration/ConfigurationOverview";
@@ -31,7 +32,16 @@ export default function ConfigurationPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'versions' | 'patterns' | 'templates' | 'analytics' | 'test' | 'implementation'>('overview');
   const [showCreateVersion, setShowCreateVersion] = useState(false);
 
-  // Initialize tab from URL parameters
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Configuration Management',
+      subtitle: 'Manage AI intent patterns, templates, and system configuration' 
+    });
+    
+    return () => HeaderTitleBus.send({ type: 'clear' });
+  }, []);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
@@ -78,7 +88,6 @@ export default function ConfigurationPage() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as any);
     
-    // Update URL without page reload
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('tab', tab);
     window.history.pushState({}, '', newUrl.toString());
@@ -119,7 +128,6 @@ export default function ConfigurationPage() {
     }
   };
 
-  // Check permissions
   const hasIntentConfigPermission = user?.permissions?.can_manage_intent_config || 
                                    user?.permissions?.is_admin || 
                                    user?.permissions?.is_super_admin;
@@ -139,7 +147,6 @@ export default function ConfigurationPage() {
     return <LoadingSpinner size="lg" text="Loading configuration..." />;
   }
 
-  // Version management columns and actions
   const versionColumns: TableColumn<IntentConfigVersion>[] = [
     {
       key: 'name',
@@ -199,42 +206,31 @@ export default function ConfigurationPage() {
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Fixed Header */}
       <div className="flex-shrink-0 p-4 sm:p-6 border-b border-neutral-200 dark:border-neutral-700">
-        {/* Header - Mobile responsive */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">Configuration Management</h1>
-            <p className="text-sm sm:text-base text-neutral-600">
-              Manage AI intent patterns, templates, and system configuration
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleReloadCache}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <RefreshCw size={16} />
-              <span className="hidden sm:inline">Reload Cache</span>
-              <span className="sm:hidden">Reload</span>
-            </Button>
-            <Button 
-              onClick={() => setShowCreateVersion(true)}
-              className="flex items-center gap-2 text-sm"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">New Version</span>
-              <span className="sm:hidden">New</span>
-            </Button>
-          </div>
+        <div className="flex justify-end items-center mb-4 gap-2">
+          <Button 
+            onClick={handleReloadCache}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <RefreshCw size={16} />
+            <span className="hidden sm:inline">Reload Cache</span>
+            <span className="sm:hidden">Reload</span>
+          </Button>
+          <Button 
+            onClick={() => setShowCreateVersion(true)}
+            className="flex items-center gap-2 text-sm"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">New Version</span>
+            <span className="sm:hidden">New</span>
+          </Button>
         </div>
 
-        {/* System Health Alert */}
         {overview && overview.systemHealth !== 'healthy' && (
           <div className="mb-4">
             <SystemHealthAlert cacheStatus={overview.cacheStatus} />
           </div>
         )}
 
-        {/* Navigation Tabs - Mobile responsive */}
         <div className="border-b border-neutral-200 dark:border-neutral-700">
           <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto">
             {['overview', 'versions', 'patterns', 'templates', 'implementation', 'test', 'analytics'].map((tab) => (
@@ -254,9 +250,8 @@ export default function ConfigurationPage() {
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
+      {/* Content Area */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {/* Tab Content */}
         {activeTab === 'overview' && overview && (
           <div className="p-4 sm:p-6 h-full overflow-auto">
             <ConfigurationOverview overview={overview} />
@@ -264,7 +259,7 @@ export default function ConfigurationPage() {
         )}
 
         {activeTab === 'versions' && (
-          <div className="p-4 sm:p-6 h-full flex flex-col">
+          <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3 flex-shrink-0">
               <h3 className="text-base sm:text-lg font-semibold">Configuration Versions</h3>
               <Button 
@@ -275,7 +270,7 @@ export default function ConfigurationPage() {
                 New Version
               </Button>
             </div>
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <DataTable
                 data={versions}
                 columns={versionColumns}
@@ -291,13 +286,13 @@ export default function ConfigurationPage() {
         )}
 
         {activeTab === 'implementation' && (
-          <div className="h-full">
+          <div className="h-full overflow-hidden">
             <ImplementationTab />
           </div>
         )}
 
         {(activeTab === 'patterns' || activeTab === 'templates' || activeTab === 'analytics' || activeTab === 'test') && (
-          <div className="h-full">
+          <div className="h-full overflow-hidden">
             <ConfigurationTabs 
               activeTab={activeTab}
               overview={overview}
@@ -327,7 +322,6 @@ export default function ConfigurationPage() {
   );
 }
 
-// Create Version Modal Component
 function CreateVersionModal({ 
   onSave, 
   onClose 

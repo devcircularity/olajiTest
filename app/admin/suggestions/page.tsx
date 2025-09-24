@@ -1,7 +1,8 @@
-// app/admin/suggestions/page.tsx - Modularized with components
+// app/admin/suggestions/page.tsx - Fixed with proper table height and header
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import { suggestionsService, Suggestion, SuggestionStats, ActionItem } from "@/services/suggestions";
 import { SuggestionsStatsCards } from "@/components/admin/suggestions/SuggestionsStatsCards";
 import { SuggestionsFilterBar } from "@/components/admin/suggestions/SuggestionsFilterBar";
@@ -30,10 +31,35 @@ export default function AdminSuggestionsPage() {
     hasNext: false
   });
 
+  // Set header title on mount
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Tester Suggestions', 
+      subtitle: 'Review and manage tester suggestions' 
+    });
+    
+    return () => {
+      HeaderTitleBus.send({ type: 'clear' });
+    };
+  }, []);
+
   useEffect(() => {
     loadSuggestions();
     loadStats();
   }, [selectedStatus]);
+
+  // Update subtitle with count
+  useEffect(() => {
+    const statusText = selectedStatus === 'all' ? 'All suggestions' : 
+                       selectedStatus === 'pending' ? 'Pending review' :
+                       selectedStatus.replace('_', ' ');
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Tester Suggestions', 
+      subtitle: `${statusText} (${suggestions.length} items)` 
+    });
+  }, [suggestions.length, selectedStatus]);
 
   const loadSuggestions = async (page = 1) => {
     try {
@@ -117,16 +143,6 @@ export default function AdminSuggestionsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Tester Suggestions</h1>
-          <p className="text-sm sm:text-base text-neutral-600">
-            Review and manage tester suggestions for system improvements
-          </p>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <SuggestionsStatsCards stats={stats} loading={loading} />
 
@@ -136,17 +152,19 @@ export default function AdminSuggestionsPage() {
         onStatusChange={setSelectedStatus}
       />
 
-      {/* Data Table */}
-      <SuggestionsDataTable
-        suggestions={suggestions}
-        loading={loading}
-        pagination={{
-          currentPage: pagination.currentPage,
-          totalPages: pagination.totalPages,
-          onPageChange: loadSuggestions,
-        }}
-        onViewSuggestion={setSelectedSuggestion}
-      />
+      {/* Data Table - Increased height for better visibility */}
+      <div className="h-[calc(100vh-300px)] min-h-[700px]">
+        <SuggestionsDataTable
+          suggestions={suggestions}
+          loading={loading}
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            onPageChange: loadSuggestions,
+          }}
+          onViewSuggestion={setSelectedSuggestion}
+        />
+      </div>
 
       {/* Review Modal */}
       {selectedSuggestion && (

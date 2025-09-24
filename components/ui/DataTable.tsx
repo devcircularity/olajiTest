@@ -1,4 +1,4 @@
-// components/ui/DataTable.tsx
+// components/ui/DataTable.tsx - Fixed invisible header issue
 "use client";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -53,7 +53,6 @@ export default function DataTable<T extends Record<string, any>>({
     direction: 'asc' | 'desc';
   } | null>(null);
 
-  // Filter data based on search term
   const filteredData = searchable
     ? data.filter(row =>
         Object.values(row).some(value =>
@@ -62,7 +61,6 @@ export default function DataTable<T extends Record<string, any>>({
       )
     : data;
 
-  // Sort data
   const sortedData = sortConfig
     ? [...filteredData].sort((a, b) => {
         const aValue = a[sortConfig.key];
@@ -108,7 +106,6 @@ export default function DataTable<T extends Record<string, any>>({
 
   return (
     <div className={`h-full flex flex-col bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm ${className}`}>
-      {/* Fixed Search Bar - Only show if searchable is true */}
       {searchable && (
         <div className="flex-shrink-0 p-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="relative">
@@ -125,7 +122,6 @@ export default function DataTable<T extends Record<string, any>>({
         </div>
       )}
 
-      {/* Table Container - Flexible height with proper scrolling */}
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Fixed Table Header */}
         <div className="flex-shrink-0 bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
@@ -161,26 +157,20 @@ export default function DataTable<T extends Record<string, any>>({
           </table>
         </div>
 
-        {/* Scrollable Table Body */}
-        <div className="flex-1 overflow-auto">
+        {/* Scrollable Table Body - FIXED: removed invisible header, using colgroup for alignment */}
+        <div className="flex-1 overflow-auto pb-4">
           <table className="w-full">
-            {/* Invisible header for column alignment */}
-            <thead className="invisible">
-              <tr>
-                {columns.map((column, index) => (
-                  <th
-                    key={index}
-                    className="px-4 py-3"
-                    style={column.width ? { width: column.width, minWidth: column.width } : {}}
-                  >
-                    {column.label}
-                  </th>
-                ))}
-                {actions && actions.length > 0 && (
-                  <th className="px-4 py-3 w-32">Actions</th>
-                )}
-              </tr>
-            </thead>
+            <colgroup>
+              {columns.map((column, index) => (
+                <col
+                  key={index}
+                  style={column.width ? { width: column.width, minWidth: column.width } : {}}
+                />
+              ))}
+              {actions && actions.length > 0 && (
+                <col style={{ width: '128px', minWidth: '128px' }} />
+              )}
+            </colgroup>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
               {sortedData.length === 0 ? (
                 <tr>
@@ -198,7 +188,6 @@ export default function DataTable<T extends Record<string, any>>({
                       <td 
                         key={colIndex} 
                         className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
-                        style={column.width ? { width: column.width, minWidth: column.width } : {}}
                       >
                         <div className="min-w-0">
                           {getCellValue(row, column)}
@@ -206,7 +195,7 @@ export default function DataTable<T extends Record<string, any>>({
                       </td>
                     ))}
                     {actions && actions.length > 0 && (
-                      <td className="px-4 py-3 text-sm w-32">
+                      <td className="px-4 py-3 text-sm">
                         <div className="flex gap-1 flex-wrap">
                           {actions.map((action, actionIndex) => (
                             <Button
@@ -236,7 +225,6 @@ export default function DataTable<T extends Record<string, any>>({
         </div>
       </div>
 
-      {/* Fixed Pagination */}
       {pagination && (
         <div className="flex-shrink-0 px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between bg-neutral-50 dark:bg-neutral-800">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">

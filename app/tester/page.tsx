@@ -195,59 +195,6 @@ function TesterDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-                Problem Queue
-              </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                Review problematic messages that need tester attention.
-              </p>
-              <button 
-                onClick={() => window.location.href = '/tester/queue'}
-                className="btn-primary w-full"
-              >
-                View Queue
-              </button>
-            </div>
-            
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-                My Suggestions
-              </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                Track suggestions you've submitted for improving AI responses.
-              </p>
-              <button 
-                onClick={() => window.location.href = '/tester/suggestions'}
-                className="btn btn-secondary w-full"
-              >
-                View Suggestions
-              </button>
-            </div>
-            
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-                Analytics
-              </h3>
-              <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                View detailed analytics and trends for system performance.
-              </p>
-              <button 
-                onClick={() => window.location.href = '/tester/stats'}
-                className="btn btn-secondary w-full"
-              >
-                View Analytics
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Tester Permissions Info */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">

@@ -5,22 +5,13 @@ import Button from "@/components/ui/Button";
 interface SuggestionReviewButtonsProps {
   suggestionStatus: string;
   reviewMode: boolean;
-  onStartReview: () => void;
-  onApprove: () => void;
-  onNeedsAnalysis: () => void;
-  onReject: () => void;
-}
-
-interface SuggestionReviewButtonsProps {
-  suggestionStatus: string;
-  reviewMode: boolean;
   currentTab: string;
   adminAnalysis: string;
   implementationNotes: string;
   onStartReview: () => void;
   onSwitchToAnalysis: () => void;
+  onSwitchToActions: () => void;
   onApprove: () => void;
-  onNeedsAnalysis: () => void;
   onReject: () => void;
 }
 
@@ -32,14 +23,14 @@ export function SuggestionReviewButtons({
   implementationNotes,
   onStartReview,
   onSwitchToAnalysis,
+  onSwitchToActions,
   onApprove,
-  onNeedsAnalysis,
   onReject
 }: SuggestionReviewButtonsProps) {
   const hasCompletedAnalysis = adminAnalysis.trim().length > 0;
 
   return (
-    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4 sm:pt-6 border-t">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-neutral-200 dark:border-neutral-700">
       {suggestionStatus === 'pending' && (
         <>
           {!reviewMode ? (
@@ -51,7 +42,7 @@ export function SuggestionReviewButtons({
               {/* Guide user through proper review flow */}
               {currentTab === 'details' && (
                 <div className="flex flex-col sm:flex-row gap-2 w-full">
-                  <div className="text-xs sm:text-sm text-blue-600 flex items-center gap-2 flex-1">
+                  <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2 flex-1">
                     <AlertCircle size={16} className="flex-shrink-0" />
                     Review the details, then proceed to Analysis tab to evaluate this suggestion
                   </div>
@@ -65,7 +56,7 @@ export function SuggestionReviewButtons({
               )}
 
               {currentTab === 'analysis' && !hasCompletedAnalysis && (
-                <div className="text-xs sm:text-sm text-amber-600 flex items-center gap-2">
+                <div className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
                   <AlertCircle size={16} className="flex-shrink-0" />
                   Please provide your analysis above before making a final decision
                 </div>
@@ -73,26 +64,18 @@ export function SuggestionReviewButtons({
 
               {currentTab === 'analysis' && hasCompletedAnalysis && (
                 <div className="flex flex-col gap-3 w-full">
-                  <div className="text-xs sm:text-sm text-green-600 flex items-center gap-2">
+                  <div className="text-xs sm:text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
                     <CheckCircle size={16} className="flex-shrink-0" />
-                    Analysis complete. Make your final decision:
+                    Analysis complete. Make your decision:
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button 
-                      onClick={onApprove}
+                      onClick={onSwitchToActions}
                       className="flex items-center gap-2 text-sm"
                     >
                       <Check size={16} />
-                      <span className="hidden sm:inline">Approve for Implementation</span>
+                      <span className="hidden sm:inline">Approve & Create Action Items</span>
                       <span className="sm:hidden">Approve</span>
-                    </Button>
-                    <Button 
-                      onClick={onNeedsAnalysis}
-                      className="btn-secondary flex items-center gap-2 text-sm"
-                    >
-                      <AlertCircle size={16} />
-                      <span className="hidden sm:inline">Needs More Analysis</span>
-                      <span className="sm:hidden">Needs Analysis</span>
                     </Button>
                     <Button 
                       onClick={onReject}
@@ -106,9 +89,28 @@ export function SuggestionReviewButtons({
               )}
 
               {currentTab === 'actions' && (
-                <div className="text-xs sm:text-sm text-neutral-600 flex items-center gap-2">
-                  <AlertCircle size={16} className="flex-shrink-0" />
-                  Action items can only be created after the suggestion is approved. Return to Analysis tab to complete your review.
+                <div className="flex flex-col gap-3 w-full">
+                  <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                    <AlertCircle size={16} className="flex-shrink-0" />
+                    Create action items to track implementation, then finalize approval
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      onClick={onApprove}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Check size={16} />
+                      <span className="hidden sm:inline">Finalize Approval</span>
+                      <span className="sm:hidden">Finalize</span>
+                    </Button>
+                    <Button 
+                      onClick={onReject}
+                      className="btn-danger flex items-center gap-2 text-sm"
+                    >
+                      <X size={16} />
+                      Reject Instead
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
@@ -117,14 +119,14 @@ export function SuggestionReviewButtons({
       )}
 
       {suggestionStatus === 'approved' && (
-        <div className="text-xs sm:text-sm text-green-600 flex items-center gap-2">
+        <div className="text-xs sm:text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
           <CheckCircle size={16} className="flex-shrink-0" />
           Approved - Create action items to track implementation
         </div>
       )}
 
       {suggestionStatus === 'implemented' && (
-        <div className="text-xs sm:text-sm text-purple-600 flex items-center gap-2">
+        <div className="text-xs sm:text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2">
           <CheckCircle size={16} className="flex-shrink-0" />
           Suggestion has been addressed
         </div>

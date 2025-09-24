@@ -130,7 +130,7 @@ export default function Sidebar({
         },
         {
           id: 'admin-monitoring',
-          label: 'Monitoring',
+          label: 'Chat Monitoring',
           href: '/admin/monitoring',
           icon: <Activity size={18} />,
           section: 'admin'
