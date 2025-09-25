@@ -9,7 +9,7 @@ import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import { Eye, Plus, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle, Zap, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 
-interface SuggestionWithDetails extends TesterSuggestion {
+interface SuggestionWithDetails extends Omit<TesterSuggestion, 'description'> {
   description?: string;
   pattern?: string;
   template_text?: string;
