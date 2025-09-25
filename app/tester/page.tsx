@@ -1,11 +1,12 @@
-// app/tester/page.tsx (Updated with Stats Cards)
+// app/tester/page.tsx - Updated with header title management
 "use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { RouteProtection } from "@/components/auth/RouteProtection";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import { testerService, TesterStats } from "@/services/tester";
-import { Clock, CheckCircle, XCircle, AlertTriangle, Zap, TrendingUp, Activity, Users } from "lucide-react";
+import { Clock, CheckCircle, XCircle, AlertTriangle, Zap, TrendingUp, Activity, Users, RefreshCw, Info } from "lucide-react";
 
 export default function TesterPage() {
   return (
@@ -23,12 +24,41 @@ function TesterDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<TesterStats | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [queueMessages, setQueueMessages] = useState<any[]>([]);
+  const [totalSuggestions, setTotalSuggestions] = useState<number>(0);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+  const [suggestionLoadError, setSuggestionLoadError] = useState<string | null>(null);
+
+  // Set header title on mount
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'Tester Dashboard', 
+      subtitle: 'Monitor system performance and track your contributions' 
+    });
+    
+    return () => {
+      HeaderTitleBus.send({ type: 'clear' });
+    };
+  }, []);
+
+  // Update subtitle with suggestion count when data loads
+  useEffect(() => {
+    if (!loadingSuggestions && totalSuggestions > 0) {
+      HeaderTitleBus.send({ 
+        type: 'set', 
+        title: 'Tester Dashboard', 
+        subtitle: `Monitor system performance and track your contributions (${totalSuggestions} suggestions)` 
+      });
+    }
+  }, [loadingSuggestions, totalSuggestions]);
 
   useEffect(() => {
     loadStats();
     loadSuggestions();
+    loadQueue();
   }, []);
 
   const loadStats = async () => {
@@ -46,13 +76,71 @@ function TesterDashboard() {
   const loadSuggestions = async () => {
     try {
       setLoadingSuggestions(true);
-      const data = await testerService.getMySuggestions({ limit: 50 });
+      setSuggestionLoadError(null);
+
+      // Use the new getAllMySuggestions method to get all suggestions
+      console.log('Loading all suggestions for tester dashboard...');
+      const data = await testerService.getAllMySuggestions();
       setSuggestions(data);
+      setTotalSuggestions(data.length);
+      
+      console.log(`✓ Successfully loaded ${data.length} suggestions for tester dashboard`);
+      
+      // Log detailed breakdown for debugging
+      const statusBreakdown = data.reduce((acc, s) => {
+        acc[s.status] = (acc[s.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log('Suggestion status breakdown:', statusBreakdown);
+
     } catch (error) {
       console.error('Failed to load suggestions:', error);
+      setSuggestionLoadError(error instanceof Error ? error.message : 'Unknown error');
+      
+      // Fallback: try the old method with higher limit
+      try {
+        console.log('Falling back to getMySuggestions with high limit...');
+        const fallbackData = await testerService.getMySuggestions({ limit: 500 });
+        setSuggestions(fallbackData);
+        setTotalSuggestions(fallbackData.length);
+        console.log(`Fallback successful: loaded ${fallbackData.length} suggestions`);
+        setSuggestionLoadError(null);
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        setSuggestionLoadError('Unable to load suggestions');
+      }
     } finally {
       setLoadingSuggestions(false);
     }
+  };
+
+  const loadQueue = async () => {
+    try {
+      setLoadingQueue(true);
+      
+      const params = {
+        days_back: 30,
+        limit: 100,
+        show_suggested: false
+      };
+      
+      const data = await testerService.getQueue(params);
+      
+      if (Array.isArray(data)) {
+        setQueueMessages(data);
+      } else {
+        setQueueMessages([]);
+      }
+    } catch (error) {
+      console.error('Failed to load queue:', error);
+      setQueueMessages([]);
+    } finally {
+      setLoadingQueue(false);
+    }
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([loadStats(), loadSuggestions(), loadQueue()]);
   };
 
   const getSuggestionStatusCounts = () => {
@@ -65,85 +153,133 @@ function TesterDashboard() {
     };
   };
 
+  const getQueueStatsCounts = () => {
+    const highPriorityCount = queueMessages.filter(m => m.priority === 1).length;
+    
+    const negativeRatingCount = queueMessages.filter(m => 
+      m.issue_type === 'negative_rating' || m.rating === -1
+    ).length;
+    
+    const fallbackCount = queueMessages.filter(m => 
+      m.issue_type === 'fallback_used' || 
+      m.issue_type === 'intent_ollama_fallback' ||
+      m.issue_type === 'routing_ollama_fallback' ||
+      m.fallback_used === true
+    ).length;
+    
+    const lowConfidenceCount = queueMessages.filter(m => 
+      m.issue_type === 'no_llm_confidence' ||
+      m.issue_type === 'low_confidence' ||
+      (m.llm_confidence && m.llm_confidence < 0.6)
+    ).length;
+
+    return {
+      total: queueMessages.length,
+      highPriority: highPriorityCount,
+      negativeRating: negativeRatingCount,
+      fallback: fallbackCount,
+      lowConfidence: lowConfidenceCount
+    };
+  };
+
   const suggestionCounts = getSuggestionStatusCounts();
+  const queueStats = getQueueStatsCounts();
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4 sm:p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2">Tester Dashboard</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
-            Monitor system performance and track your contributions
-          </p>
+        {/* Header with Refresh - Simplified since title is now in HeaderBar */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={refreshAll}
+            className="btn btn-secondary flex items-center gap-2"
+            disabled={loadingStats || loadingSuggestions || loadingQueue}
+          >
+            <RefreshCw size={16} className={loadingStats || loadingSuggestions || loadingQueue ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
 
-        {/* System Performance Stats */}
+        {/* Problem Queue Stats */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-            System Performance (Last 30 Days)
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="text-blue-600 flex-shrink-0" size={16} />
-                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Total Messages</h3>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                {loadingStats ? '...' : (stats?.total_messages?.toLocaleString() || '0')}
-              </p>
-              <p className="text-xs text-neutral-500">Processed</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Problem Queue Overview
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+              <Info size={14} />
+              <span>Total: {queueStats.total} messages in queue</span>
             </div>
-
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <XCircle className="text-red-600 flex-shrink-0" size={16} />
-                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Issues</h3>
+                <AlertTriangle className="text-red-600 flex-shrink-0" size={16} />
+                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">High Priority</h3>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-red-600">
-                {loadingStats ? '...' : (stats?.needs_attention || 0)}
+                {loadingQueue ? '...' : queueStats.highPriority}
               </p>
-              <p className="text-xs text-neutral-500">
-                {stats?.total_messages ? 
-                  `${((stats.needs_attention / stats.total_messages) * 100).toFixed(1)}%` : 
-                  '0%'
-                } of total
-              </p>
+              <p className="text-xs text-neutral-500">Urgent Issues</p>
             </div>
 
             <div className="card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="text-orange-600 flex-shrink-0" size={16} />
-                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Fallbacks</h3>
+                <XCircle className="text-orange-600 flex-shrink-0" size={16} />
+                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Negative Ratings</h3>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-orange-600">
-                {loadingStats ? '...' : (stats?.fallback_used || 0)}
+                {loadingQueue ? '...' : queueStats.negativeRating}
               </p>
-              <p className="text-xs text-neutral-500">Used</p>
+              <p className="text-xs text-neutral-500">User Feedback</p>
             </div>
 
             <div className="card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="text-green-600 flex-shrink-0" size={16} />
-                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Success Rate</h3>
+                <Clock className="text-yellow-600 flex-shrink-0" size={16} />
+                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Fallback Used</h3>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-green-600">
-                {loadingStats ? '...' : 
-                  stats?.total_messages ? 
-                    `${(((stats.total_messages - stats.needs_attention) / stats.total_messages) * 100).toFixed(1)}%` : 
-                    '0%'
-                }
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600">
+                {loadingQueue ? '...' : queueStats.fallback}
               </p>
-              <p className="text-xs text-neutral-500">Handled well</p>
+              <p className="text-xs text-neutral-500">System Fallbacks</p>
+            </div>
+
+            <div className="card p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="text-purple-600 flex-shrink-0" size={16} />
+                <h3 className="text-xs sm:text-sm font-medium text-neutral-600">Low Confidence</h3>
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                {loadingQueue ? '...' : queueStats.lowConfidence}
+              </p>
+              <p className="text-xs text-neutral-500">AI Uncertainty</p>
             </div>
           </div>
         </div>
 
         {/* Your Suggestions Stats */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-            Your Suggestions
-          </h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Your Suggestions
+            </h2>
+            <div className="flex items-center gap-2 text-sm">
+              {suggestionLoadError ? (
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle size={14} />
+                  <span>Error loading: {suggestionLoadError}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                  <Info size={14} />
+                  <span>Total: {totalSuggestions} suggestions loaded</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -195,50 +331,6 @@ function TesterDashboard() {
           </div>
         </div>
 
-        {/* Tester Permissions Info */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">
-            Your Tester Permissions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-neutral-600 dark:text-neutral-400">Tester:</span>
-                <span className={user?.permissions?.is_tester ? "text-green-600" : "text-red-600"}>
-                  {user?.permissions?.is_tester ? "Yes" : "No"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600 dark:text-neutral-400">Admin:</span>
-                <span className={user?.permissions?.is_admin ? "text-green-600" : "text-red-600"}>
-                  {user?.permissions?.is_admin ? "Yes" : "No"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600 dark:text-neutral-400">Super Admin:</span>
-                <span className={user?.permissions?.is_super_admin ? "text-green-600" : "text-red-600"}>
-                  {user?.permissions?.is_super_admin ? "Yes" : "No"}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-neutral-600 dark:text-neutral-400">Submit Suggestions:</span>
-                <span className="text-green-600">Yes</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600 dark:text-neutral-400">View Problem Queue:</span>
-                <span className="text-green-600">Yes</span>
-              </div>
-              <div>
-                <span className="text-neutral-600 dark:text-neutral-400">Roles: </span>
-                <span className="text-neutral-900 dark:text-neutral-100">
-                  {user?.roles?.join(", ") || "None"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

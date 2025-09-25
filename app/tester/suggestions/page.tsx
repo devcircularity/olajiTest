@@ -1,8 +1,9 @@
-// app/tester/suggestions/page.tsx - Simplified without stats cards
+// app/tester/suggestions/page.tsx - Updated with header title management
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessTesterQueue } from "@/utils/permissions";
+import { HeaderTitleBus } from "@/components/layout/HeaderBar";
 import { testerService, TesterSuggestion } from "@/services/tester";
 import DataTable, { TableColumn, TableAction } from "@/components/ui/DataTable";
 import { Eye, Plus, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle, Zap, X } from "lucide-react";
@@ -24,6 +25,44 @@ export default function TesterSuggestionsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestionWithDetails | null>(null);
+
+  // Set header title on mount
+  useEffect(() => {
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'My Suggestions', 
+      subtitle: 'Track and manage your submitted suggestions' 
+    });
+    
+    return () => {
+      HeaderTitleBus.send({ type: 'clear' });
+    };
+  }, []);
+
+  // Update subtitle with count and filters when data changes
+  useEffect(() => {
+    let subtitle = `Track and manage your submitted suggestions (${suggestions.length} total)`;
+    
+    const activeFilters = [];
+    if (selectedStatus) {
+      const statusLabels = { 'pending': 'Pending', 'approved': 'Approved', 'rejected': 'Rejected', 'implemented': 'Implemented' };
+      activeFilters.push((statusLabels as Record<string, string>)[selectedStatus] || selectedStatus);
+    }
+    if (selectedType) {
+      const typeLabels = { 'regex_pattern': 'Pattern', 'prompt_template': 'Template', 'intent_mapping': 'Intent', 'handler_improvement': 'Handler' };
+      activeFilters.push((typeLabels as Record<string, string>)[selectedType] || selectedType);
+    }
+    
+    if (activeFilters.length > 0) {
+      subtitle += ` • Filtered: ${activeFilters.join(', ')}`;
+    }
+
+    HeaderTitleBus.send({ 
+      type: 'set', 
+      title: 'My Suggestions', 
+      subtitle 
+    });
+  }, [suggestions.length, selectedStatus, selectedType]);
 
   useEffect(() => {
     loadSuggestions();
@@ -197,31 +236,23 @@ export default function TesterSuggestionsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 p-4 sm:p-6 overflow-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">My Suggestions</h1>
-            <p className="text-neutral-600 text-sm sm:text-base">
-              Track and manage your submitted suggestions ({suggestions.length} total)
-            </p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button 
-              onClick={loadSuggestions}
-              className="flex items-center gap-2 btn-secondary text-sm flex-1 sm:flex-none"
-            >
-              <RefreshCw size={16} />
-              <span>Refresh</span>
-            </Button>
-            <Button 
-              onClick={() => window.location.href = '/tester/queue'}
-              className="flex items-center gap-2 text-sm flex-1 sm:flex-none"
-            >
-              <Plus size={16} />
-              <span className="sm:hidden">New</span>
-              <span className="hidden sm:inline">Create New</span>
-            </Button>
-          </div>
+        {/* Action buttons - Simplified since title is now in HeaderBar */}
+        <div className="flex justify-end gap-2 mb-6">
+          <Button 
+            onClick={loadSuggestions}
+            className="flex items-center gap-2 btn-secondary text-sm"
+          >
+            <RefreshCw size={16} />
+            <span>Refresh</span>
+          </Button>
+          <Button 
+            onClick={() => window.location.href = '/tester/queue'}
+            className="flex items-center gap-2 text-sm"
+          >
+            <Plus size={16} />
+            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">Create New</span>
+          </Button>
         </div>
 
         {/* Filters - More compact layout */}

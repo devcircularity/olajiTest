@@ -1,4 +1,4 @@
-// services/tester.ts - Clean production version
+// services/tester.ts - Complete updated version with higher limits and pagination
 import { apiClient } from './api';
 
 export interface ProblematicMessage {
@@ -65,6 +65,14 @@ export interface TesterSuggestion {
   created_at: string;
   reviewed_at?: string;
   admin_note?: string;
+  description: string;
+  pattern?: string;
+  template_text?: string;
+  tester_note?: string;
+  chat_message_id?: string;
+  routing_log_id?: string;
+  original_message?: string;
+  assistant_response?: string;
 }
 
 export interface TesterStats {
@@ -99,18 +107,27 @@ export interface GetQueueParams {
   limit?: number;
   days_back?: number;
   school_id?: string;
-  show_suggested?: boolean; // NEW: Include messages that already have suggestions
+  show_suggested?: boolean;
 }
 
 export interface GetSuggestionsParams {
   limit?: number;
   status?: string;
   suggestion_type?: string;
+  page?: number;
 }
 
 export interface GetStatsParams {
   days_back?: number;
   school_id?: string;
+}
+
+export interface SuggestionsPaginatedResponse {
+  suggestions: TesterSuggestion[];
+  total: number;
+  page: number;
+  limit: number;
+  has_next: boolean;
 }
 
 class TesterService {
@@ -122,7 +139,7 @@ class TesterService {
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.days_back) searchParams.append('days_back', params.days_back.toString());
     if (params.school_id) searchParams.append('school_id', params.school_id);
-    if (params.show_suggested !== undefined) searchParams.append('show_suggested', params.show_suggested.toString()); // NEW
+    if (params.show_suggested !== undefined) searchParams.append('show_suggested', params.show_suggested.toString());
     
     const response = await apiClient.get(`/api/tester/queue?${searchParams.toString()}`);
     return response.data;
@@ -210,12 +227,84 @@ class TesterService {
   async getMySuggestions(params: GetSuggestionsParams = {}): Promise<TesterSuggestion[]> {
     const searchParams = new URLSearchParams();
     
-    if (params.limit) searchParams.append('limit', params.limit.toString());
+    // Increased default and maximum limits
+    const limit = params.limit ? Math.min(params.limit, 500) : 100;
+    searchParams.append('limit', limit.toString());
+    
     if (params.status) searchParams.append('status', params.status);
     if (params.suggestion_type) searchParams.append('suggestion_type', params.suggestion_type);
+    if (params.page) searchParams.append('page', params.page.toString());
     
     const response = await apiClient.get(`/api/tester/suggestions?${searchParams.toString()}`);
+    
+    // Log the response to help debug count issues
+    console.log(`getMySuggestions: Retrieved ${response.data.length} suggestions with limit ${limit}`);
+    
     return response.data;
+  }
+
+  async getMySuggestionsPaginated(params: GetSuggestionsParams = {}): Promise<SuggestionsPaginatedResponse> {
+    const searchParams = new URLSearchParams();
+    
+    // Support pagination with higher limits
+    const limit = params.limit ? Math.min(params.limit, 500) : 100;
+    searchParams.append('limit', limit.toString());
+    
+    if (params.status) searchParams.append('status', params.status);
+    if (params.suggestion_type) searchParams.append('suggestion_type', params.suggestion_type);
+    if (params.page) searchParams.append('page', params.page.toString());
+    
+    const response = await apiClient.get(`/api/tester/suggestions-paginated?${searchParams.toString()}`);
+    return response.data;
+  }
+
+  async getAllMySuggestions(params: Omit<GetSuggestionsParams, 'limit' | 'page'> = {}): Promise<TesterSuggestion[]> {
+    // Get all suggestions by making multiple paginated calls if needed
+    let allSuggestions: TesterSuggestion[] = [];
+    let page = 1;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore && page <= 10) { // Safety limit of 10 pages (max 1000 suggestions)
+      const suggestions = await this.getMySuggestions({ 
+        ...params, 
+        limit, 
+        page 
+      });
+
+      if (suggestions.length === 0) {
+        hasMore = false;
+      } else {
+        allSuggestions.push(...suggestions);
+        hasMore = suggestions.length === limit; // If we got fewer than limit, we're done
+        page++;
+      }
+    }
+
+    console.log(`getAllMySuggestions: Retrieved ${allSuggestions.length} total suggestions across ${page - 1} pages`);
+    return allSuggestions;
+  }
+
+  async getMySuggestionsCount(params: Omit<GetSuggestionsParams, 'limit' | 'page'> = {}): Promise<number> {
+    try {
+      // Try to get count from a dedicated endpoint if it exists
+      const searchParams = new URLSearchParams();
+      if (params.status) searchParams.append('status', params.status);
+      if (params.suggestion_type) searchParams.append('suggestion_type', params.suggestion_type);
+      
+      try {
+        const response = await apiClient.get(`/api/tester/suggestions/count?${searchParams.toString()}`);
+        return response.data.count;
+      } catch (error) {
+        // Fallback: get all suggestions to count them
+        console.log('No count endpoint available, using getAllMySuggestions fallback');
+        const allSuggestions = await this.getAllMySuggestions(params);
+        return allSuggestions.length;
+      }
+    } catch (error) {
+      console.error('Failed to get suggestions count:', error);
+      return 0;
+    }
   }
 
   async getStats(params: GetStatsParams = {}): Promise<TesterStats> {
@@ -295,6 +384,50 @@ class TesterService {
       case 'rejected': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200';
       case 'implemented': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200';
       default: return 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200';
+    }
+  }
+
+  // Debug methods for troubleshooting suggestion count issues
+  async debugSuggestionCounts(): Promise<{
+    total: number;
+    by_status: Record<string, number>;
+    by_type: Record<string, number>;
+    by_priority: Record<string, number>;
+    recent_suggestions: Array<{
+      id: string;
+      title: string;
+      status: string;
+      created_at: string;
+    }>;
+  }> {
+    try {
+      const allSuggestions = await this.getAllMySuggestions();
+      
+      const counts = {
+        total: allSuggestions.length,
+        by_status: {} as Record<string, number>,
+        by_type: {} as Record<string, number>,
+        by_priority: {} as Record<string, number>,
+        recent_suggestions: allSuggestions.slice(0, 10).map(s => ({
+          id: s.id,
+          title: s.title,
+          status: s.status,
+          created_at: s.created_at
+        }))
+      };
+
+      // Count by status
+      allSuggestions.forEach(s => {
+        counts.by_status[s.status] = (counts.by_status[s.status] || 0) + 1;
+        counts.by_type[s.suggestion_type] = (counts.by_type[s.suggestion_type] || 0) + 1;
+        counts.by_priority[s.priority] = (counts.by_priority[s.priority] || 0) + 1;
+      });
+
+      console.log('Debug suggestion counts:', counts);
+      return counts;
+    } catch (error) {
+      console.error('Failed to debug suggestion counts:', error);
+      throw error;
     }
   }
 }

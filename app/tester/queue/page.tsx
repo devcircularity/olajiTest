@@ -1,5 +1,4 @@
-// app/tester/queue/page.tsx - Add to existing component
-
+// app/tester/queue/page.tsx - Simplified without stats cards
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +8,6 @@ import { apiClient } from "@/services/api";
 import { EyeOff } from "lucide-react";
 
 // Import components
-import { QueueStatsCards } from "@/components/tester/queue/QueueStatsCards";
 import { QueueFilters } from "@/components/tester/queue/QueueFilters";
 import { QueueDataTable } from "@/components/tester/queue/QueueDataTable";
 import { ConversationModal } from "@/components/tester/queue/ConversationModal";
@@ -154,8 +152,6 @@ export default function TesterQueuePage() {
     );
   }
 
-  // app/tester/queue/page.tsx - Continuation
-
   // Show queue hidden message for non-admin testers
   if (queueHidden && !isAdmin) {
     return (
@@ -201,9 +197,6 @@ export default function TesterQueuePage() {
         </div>
       )}
 
-      {/* Stats Summary */}
-      <QueueStatsCards messages={messages} />
-
       {/* Filters and Actions */}
       <QueueFilters
         selectedPriority={selectedPriority}
@@ -218,8 +211,8 @@ export default function TesterQueuePage() {
         onRefresh={handleRefresh}
       />
 
-      {/* Data Table */}
-      <div className="h-[600px]">
+      {/* Data Table - Increased height since stats are removed */}
+      <div className="h-[calc(100vh-280px)] min-h-[600px]">
         <QueueDataTable
           messages={messages}
           loading={loading}
