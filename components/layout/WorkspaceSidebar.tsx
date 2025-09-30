@@ -165,6 +165,15 @@ export default function Sidebar({
         icon: <MessageSquare size={18} />,
         section: 'admin'
       })
+
+      // Admin can view tester performance
+      items.push({
+        id: 'admin-testers',
+        label: 'Tester Performance',
+        href: '/admin/testers',
+        icon: <TrendingUp size={18} />,
+        section: 'admin'
+      })
     }
 
     // Tester section - only show when in tester context AND user is tester

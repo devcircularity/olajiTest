@@ -1,4 +1,4 @@
-// app/tester/queue/components/SuggestionModal.tsx - Updated with internal success handling
+// app/tester/queue/components/SuggestionModal.tsx - Fixed with proper scrolling
 import { useState } from "react";
 import { ProblematicMessage, testerService } from "@/services/tester";
 import Button from "@/components/ui/Button";
@@ -190,10 +190,11 @@ export function SuggestionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={submissionResult?.success ? undefined : onClose} />
-      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full">
-        <div className="p-6">
-          {/* Header with Steps */}
-          <div className="flex items-center justify-between mb-6">
+      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        
+        {/* Fixed Header */}
+        <div className="p-6 flex-shrink-0 border-b border-neutral-200 dark:border-neutral-700">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold">Improvement Suggestions</h2>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
@@ -214,13 +215,16 @@ export function SuggestionModal({
 
           {/* Progress Indicator - Only show if not in success state */}
           {!submissionResult?.success && (
-            <div className="flex mb-6">
+            <div className="flex">
               <div className={`flex-1 h-2 rounded-l-full ${step >= 1 ? 'bg-blue-500' : 'bg-neutral-200 dark:bg-neutral-700'}`} />
               <div className={`flex-1 h-2 ${step >= 2 ? 'bg-blue-500' : 'bg-neutral-200 dark:bg-neutral-700'}`} />
               <div className={`flex-1 h-2 rounded-r-full ${step >= 3 ? 'bg-blue-500' : 'bg-neutral-200 dark:bg-neutral-700'}`} />
             </div>
           )}
+        </div>
 
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
           {/* Don't show form steps if we have a successful submission */}
           {!submissionResult?.success && (
             <>
@@ -235,8 +239,8 @@ export function SuggestionModal({
                     <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
                       Does the user's question have issues that could be better understood by the AI?
                     </p>
-                    <div className="bg-white dark:bg-blue-900/40 p-3 rounded border">
-                      <p className="text-sm font-mono text-neutral-800 dark:text-neutral-200">
+                    <div className="bg-white dark:bg-blue-900/40 p-3 rounded border max-h-32 overflow-y-auto">
+                      <p className="text-sm font-mono text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
                         "{message.user_message}"
                       </p>
                     </div>
@@ -308,8 +312,8 @@ export function SuggestionModal({
                     <p className="text-sm text-red-700 dark:text-red-300 mb-3">
                       Does the AI's response have quality or helpfulness issues?
                     </p>
-                    <div className="bg-white dark:bg-red-900/40 p-3 rounded border">
-                      <p className="text-sm font-mono text-neutral-800 dark:text-neutral-200">
+                    <div className="bg-white dark:bg-red-900/40 p-3 rounded border max-h-40 overflow-y-auto">
+                      <p className="text-sm font-mono text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
                         "{message.assistant_response}"
                       </p>
                     </div>
@@ -388,7 +392,7 @@ export function SuggestionModal({
                           </span>
                         </div>
                         {userQueryIssue && userQuerySuggestion && (
-                          <div className="text-sm text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-700 p-3 rounded">
+                          <div className="text-sm text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-700 p-3 rounded max-h-32 overflow-y-auto">
                             {userQuerySuggestion}
                           </div>
                         )}
@@ -406,7 +410,7 @@ export function SuggestionModal({
                           </span>
                         </div>
                         {aiResponseIssue && aiResponseSuggestion && (
-                          <div className="text-sm text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-700 p-3 rounded">
+                          <div className="text-sm text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-700 p-3 rounded max-h-32 overflow-y-auto">
                             {aiResponseSuggestion}
                           </div>
                         )}
@@ -424,42 +428,46 @@ export function SuggestionModal({
                   </div>
                 </div>
               )}
-
-              {/* Navigation Buttons */}
-              <div className="flex justify-between mt-6">
-                <Button 
-                  onClick={step === 1 ? onClose : handleBack}
-                  className="btn-secondary"
-                  disabled={submitting}
-                >
-                  {step === 1 ? 'Cancel' : 'Back'}
-                </Button>
-
-                {step < 3 ? (
-                  <Button 
-                    onClick={handleNext}
-                    disabled={
-                      (step === 1 && userQueryIssue === null) ||
-                      (step === 1 && userQueryIssue === true && !userQuerySuggestion.trim()) ||
-                      (step === 2 && aiResponseIssue === null) ||
-                      (step === 2 && aiResponseIssue === true && !aiResponseSuggestion.trim()) ||
-                      submitting
-                    }
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                  >
-                    {submitting ? 'Submitting...' : 'Submit Suggestions'}
-                  </Button>
-                )}
-              </div>
             </>
           )}
         </div>
+
+        {/* Fixed Footer with Navigation Buttons */}
+        {!submissionResult?.success && (
+          <div className="p-6 border-t border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+            <div className="flex justify-between">
+              <Button 
+                onClick={step === 1 ? onClose : handleBack}
+                className="btn-secondary"
+                disabled={submitting}
+              >
+                {step === 1 ? 'Cancel' : 'Back'}
+              </Button>
+
+              {step < 3 ? (
+                <Button 
+                  onClick={handleNext}
+                  disabled={
+                    (step === 1 && userQueryIssue === null) ||
+                    (step === 1 && userQueryIssue === true && !userQuerySuggestion.trim()) ||
+                    (step === 2 && aiResponseIssue === null) ||
+                    (step === 2 && aiResponseIssue === true && !aiResponseSuggestion.trim()) ||
+                    submitting
+                  }
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Suggestions'}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
