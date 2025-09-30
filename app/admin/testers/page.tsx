@@ -10,6 +10,9 @@ import { Eye, TrendingUp, MessageSquare, CheckCircle, XCircle, Clock, Zap, Refre
 import Button from "@/components/ui/Button";
 
 interface TesterPerformance extends TesterRanking {
+  full_name: string; // Mapped from user_name
+  success_rate: number; // Mapped from success_score
+  last_activity: string; // Mapped from last_suggestion_date
   average_response_time?: number;
   join_date?: string;
   total_points: number;
@@ -92,9 +95,7 @@ export default function TestersPage() {
         success_rate: ranking.success_score, // Map success_score to success_rate
         last_activity: ranking.last_suggestion_date || '',
         total_points: Math.floor(ranking.success_score * 10), // Calculate points based on success score
-        is_active: true, // Default to active, or add logic based on last activity
-        join_date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(), // Mock join date
-        average_response_time: Math.floor(Math.random() * 1000) + 500 // Mock response time
+        is_active: true // Default to active, or add logic based on last activity
       }));
       
       setTesters(transformedTesters);
@@ -372,38 +373,6 @@ function getTimeAgo(dateString: string): string {
   return `${Math.floor(diffInDays / 365)} years ago`;
 }
 
-// Mock API function - replace with actual API call
-async function mockGetTesterPerformance(params: any) {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Mock data generation
-  const mockTesters: TesterPerformance[] = Array.from({ length: 25 }, (_, i) => ({
-    user_id: `user_${i + 1}`,
-    full_name: `Tester ${i + 1}`,
-    email: `tester${i + 1}@example.com`,
-    total_suggestions: Math.floor(Math.random() * 50) + 10,
-    approved_suggestions: Math.floor(Math.random() * 30) + 5,
-    rejected_suggestions: Math.floor(Math.random() * 10),
-    implemented_suggestions: Math.floor(Math.random() * 15) + 2,
-    pending_suggestions: Math.floor(Math.random() * 8),
-    success_rate: Math.floor(Math.random() * 40) + 60,
-    average_response_time: Math.floor(Math.random() * 1000) + 500,
-    last_activity: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-    join_date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-    total_points: Math.floor(Math.random() * 1000) + 100,
-    rank: i + 1,
-    is_active: Math.random() > 0.1
-  }));
-
-  return {
-    testers: mockTesters,
-    page: params.page || 1,
-    total: mockTesters.length,
-    has_next: false
-  };
-}
-
 // Tester Details Modal Component
 function TesterDetailsModal({ 
   tester, 
@@ -519,13 +488,15 @@ function TesterDetailsModal({
               <h3 className="font-semibold text-lg">Activity Information</h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar size={16} className="text-neutral-600" />
-                    <span className="text-sm font-medium">Join Date</span>
+                {tester.join_date && (
+                  <div className="p-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar size={16} className="text-neutral-600" />
+                      <span className="text-sm font-medium">Join Date</span>
+                    </div>
+                    <span className="text-sm">{new Date(tester.join_date).toLocaleDateString()}</span>
                   </div>
-                  <span className="text-sm">{new Date(tester.join_date).toLocaleDateString()}</span>
-                </div>
+                )}
                 
                 <div className="p-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
                   <div className="flex items-center gap-2 mb-1">
